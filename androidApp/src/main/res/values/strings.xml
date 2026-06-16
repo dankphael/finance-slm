@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Finance SLM</string>
-    <string name="accessibility_service_description">Finance SLM uses accessibility access to read screen content from your finance apps (PayNow, PayLah, Grab, Moomoo, Tiger Brokers) and generate personalized financial insights. All data stays on your device.</string>
+    <string name="accessibility_service_description">Finance SLM reads screen content from your finance apps to provide personalized financial insights. All data stays on your device and is never shared.</string>
+    <string name="notification_channel_name">Screen Reading</string>
+    <string name="notification_title">Finance SLM Active</string>
+    <string name="notification_text">Monitoring finance apps for insights</string>
 </resources>

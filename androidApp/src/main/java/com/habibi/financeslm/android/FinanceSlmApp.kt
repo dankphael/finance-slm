@@ -1,6 +1,7 @@
 package com.habibi.financeslm.android
 
 import android.app.Application
+import com.habibi.financeslm.android.di.androidAppModule
 import com.habibi.financeslm.di.appModule
 import com.habibi.financeslm.di.sdkModule
 import com.habibi.financeslm.platform.PlatformContext
@@ -18,7 +19,7 @@ class FinanceSlmApp : Application() {
         // Initialize Koin DI
         startKoin {
             androidContext(this@FinanceSlmApp)
-            modules(sdkModule, appModule)
+            modules(sdkModule, appModule, androidAppModule)
         }
     }
 }

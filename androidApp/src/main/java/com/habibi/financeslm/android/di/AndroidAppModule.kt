@@ -10,6 +10,7 @@ import com.habibi.financeslm.domain.repository.LoraRepository
 import com.habibi.financeslm.domain.repository.ModelRepository
 import com.habibi.financeslm.domain.repository.PreferencesRepository
 import com.habibi.financeslm.domain.repository.ScreenDataRepository
+import com.habibi.financeslm.platform.ScreenReader
 import com.habibi.financeslm.platform.createScreenReader
 import org.koin.dsl.module
 
@@ -21,6 +22,8 @@ val androidAppModule = module {
     single<ModelRepository> { ModelRepositoryImpl() }
     single<LoraRepository> { LoraRepositoryImpl() }
     single<InferenceRepository> { InferenceRepositoryImpl() }
-    single<ScreenDataRepository> { ScreenDataRepositoryImpl() }
+    single<ScreenDataRepository> {
+        ScreenDataRepositoryImpl(screenDataFlow = get<ScreenReader>().observeScreenData())
+    }
     single<PreferencesRepository> { PreferencesRepositoryImpl() }
 }
