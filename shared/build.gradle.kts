@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -46,6 +47,15 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
             implementation(libs.sqldelight.native.driver)
+        }
+    }
+}
+
+sqldelight {
+    databases {
+        create("FinanceSlmDatabase") {
+            packageName.set("com.habibi.financeslm.db")
+            srcDirs.setFrom("src/commonMain/sqldelight")
         }
     }
 }

@@ -22,6 +22,7 @@ import com.habibi.financeslm.platform.ScreenReader
 import com.habibi.financeslm.util.ChecksumVerifier
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
+import org.koin.android.ext.koin.androidContext
 
 /**
  * Android-specific DI bindings for repository implementations, platform services, and ViewModels.
@@ -47,12 +48,16 @@ val androidAppModule = module {
     single<InferenceRepository> {
         InferenceRepositoryImpl(
             llamaEngine = get(),
-            promptBuilder = get()
+            promptBuilder = get(),
+            database = get()
         )
     }
     single<ScreenDataRepository> {
         ScreenDataRepositoryImpl(screenDataFlow = get<ScreenReader>().observeScreenData())
     }
+
+    // ── Database ──
+    single { com.habibi.financeslm.db.DatabaseDriverFactory(androidContext()) }
 
     // ── ViewModels ──
     viewModel { OnboardingViewModel(get(), get()) }

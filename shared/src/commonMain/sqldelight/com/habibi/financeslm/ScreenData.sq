@@ -1,0 +1,35 @@
+CREATE TABLE IF NOT EXISTS screen_data (
+    id TEXT NOT NULL PRIMARY KEY,
+    source_package TEXT NOT NULL,
+    source_app TEXT NOT NULL,
+    text_content TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    data_points TEXT NOT NULL DEFAULT '[]'
+);
+
+CREATE INDEX IF NOT EXISTS idx_screen_data_timestamp ON screen_data(timestamp DESC);
+
+getAll:
+SELECT * FROM screen_data ORDER BY timestamp DESC LIMIT ?;
+
+getById:
+SELECT * FROM screen_data WHERE id = ?;
+
+getRecent:
+SELECT * FROM screen_data ORDER BY timestamp DESC LIMIT ?;
+
+insertOrReplace:
+INSERT OR REPLACE INTO screen_data (id, source_package, source_app, text_content, timestamp, data_points)
+VALUES (?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM screen_data WHERE id = ?;
+
+deleteAll:
+DELETE FROM screen_data;
+
+deleteOlderThan:
+DELETE FROM screen_data WHERE timestamp < ?;
+
+count:
+SELECT COUNT(*) FROM screen_data;

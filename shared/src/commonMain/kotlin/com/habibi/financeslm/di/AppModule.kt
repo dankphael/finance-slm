@@ -1,5 +1,7 @@
 package com.habibi.financeslm.di
 
+import com.habibi.financeslm.db.DatabaseDriverFactory
+import com.habibi.financeslm.db.FinanceSlmDatabase
 import com.habibi.financeslm.domain.repository.InferenceRepository
 import com.habibi.financeslm.domain.repository.LoraRepository
 import com.habibi.financeslm.domain.repository.ModelRepository
@@ -50,6 +52,10 @@ val sdkModule = module {
     single { createDeviceInfo() }
     single { createScreenReader() }
     single { createLlamaEngine() }
+    single {
+        val factory = get<DatabaseDriverFactory>()
+        FinanceSlmDatabase(factory.createDriver())
+    }
 }
 
 fun getSharedModules(): List<Module> = listOf(sdkModule, appModule)

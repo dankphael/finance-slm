@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS finance_insight (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    detail_text TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'GENERAL',
+    source_app TEXT,
+    timestamp INTEGER NOT NULL,
+    lora_adapter_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_insight_timestamp ON finance_insight(timestamp DESC);
+
+getAll:
+SELECT * FROM finance_insight ORDER BY timestamp DESC;
+
+getById:
+SELECT * FROM finance_insight WHERE id = ?;
+
+insertOrReplace:
+INSERT OR REPLACE INTO finance_insight (id, title, summary, detail_text, category, source_app, timestamp, lora_adapter_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM finance_insight WHERE id = ?;
+
+deleteAll:
+DELETE FROM finance_insight;
+
+count:
+SELECT COUNT(*) FROM finance_insight;
