@@ -23,6 +23,7 @@ local.properties
 *.dylib
 obj/
 jniLibs/
+.cxx/
 
 # Model files (large binaries — tracked with LFS on CI)
 models/

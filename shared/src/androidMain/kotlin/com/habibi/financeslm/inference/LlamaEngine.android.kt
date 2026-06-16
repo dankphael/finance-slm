@@ -1,47 +1,118 @@
 package com.habibi.financeslm.inference
 
 import com.habibi.financeslm.util.Logger
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 
 /**
- * Android stub LlamaEngine — will be replaced with JNI bridge to libllama.so.
+ * Android LlamaEngine — JNI bridge to libllama.so.
+ *
+ * Native methods are registered via JNI_OnLoad + RegisterNatives in llama_jni.cpp
+ * (NOT name mangling), so the method names are independent of the class/package name.
  */
-class AndroidLlamaEngine : LlamaEngine {
-    private var loaded = false
-    private var modelPath: String? = null
+class LlamaEngineAndroid : LlamaEngine {
 
-    override suspend fun loadModel(path: String, config: LlamaConfig): Boolean {
-        Logger.d("LlamaEngine", "loadModel(stub-android): $path")
-        loaded = true
-        modelPath = path
-        return true
+    private var loadedModelPath: String? = null
+
+    // ── JNI extern declarations ───────────────────────────────────────────
+    // These map to functions registered in llama_jni.cpp via JNI_OnLoad + RegisterNatives.
+
+    private external fun nativeLoadModel(
+        path: String,
+        contextSize: Int,
+        batchSize: Int,
+        threadCount: Int,
+        gpuLayers: Int
+    ): Boolean
+
+    private external fun nativeFreeModel()
+
+    private external fun nativeGenerate(
+        prompt: String,
+        maxTokens: Int,
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        repeatPenalty: Float
+    ): String
+
+    private external fun nativeTokenize(text: String): IntArray?
+
+    private external fun nativeApplyLora(loraPath: String): Boolean
+
+    private external fun nativeIsLoaded(): Boolean
+
+    // ── Companion: ensure native lib is loaded ────────────────────────────
+    companion object {
+        init {
+            try {
+                System.loadLibrary("llamajni")
+                Logger.d("LlamaEngineAndroid", "libllamajni.so loaded")
+            } catch (e: UnsatisfiedLinkError) {
+                Logger.d("LlamaEngineAndroid", "libllamajni.so not found, JNI will not be available: ${e.message}")
+            }
+        }
     }
 
-    override suspend fun unloadModel() {
-        Logger.d("LlamaEngine", "unloadModel(stub-android)")
-        loaded = false
-        modelPath = null
+    // ── LlamaEngine interface implementation ──────────────────────────────
+
+    override suspend fun loadModel(path: String, config: LlamaConfig): Boolean = withContext(Dispatchers.Default) {
+        Logger.d("LlamaEngineAndroid", "loadModel: $path")
+        val result = nativeLoadModel(
+            path = path,
+            contextSize = config.contextSize,
+            batchSize = config.batchSize,
+            threadCount = config.threadCount,
+            gpuLayers = config.gpuLayers
+        )
+        if (result) {
+            loadedModelPath = path
+        }
+        result
     }
 
-    override suspend fun isLoaded(): Boolean = loaded
+    override suspend fun unloadModel() = withContext(Dispatchers.Default) {
+        Logger.d("LlamaEngineAndroid", "unloadModel")
+        nativeFreeModel()
+        loadedModelPath = null
+    }
+
+    override suspend fun isLoaded(): Boolean = nativeIsLoaded()
 
     override suspend fun infer(prompt: String, params: InferenceParams): Flow<String> = flow {
-        emit("[Android stub inference] Processing: ${prompt.take(50)}...")
-        emit("\n")
-        emit("Stub result. Real implementation will use JNI → libllama.so.")
+        Logger.d("LlamaEngineAndroid", "infer: prompt_len=${prompt.length}, max_tokens=${params.maxTokens}")
+
+        val result = withContext(Dispatchers.Default) {
+            nativeGenerate(
+                prompt = prompt,
+                maxTokens = params.maxTokens,
+                temperature = params.temperature,
+                topP = params.topP,
+                topK = params.topK,
+                repeatPenalty = params.repeatPenalty
+            )
+        }
+
+        if (result.isNotEmpty()) {
+            emit(result)
+        } else {
+            emit("[error] Inference returned empty result")
+        }
     }
 
-    override suspend fun tokenize(text: String): List<Int> {
-        return text.map { it.code }
+    override suspend fun tokenize(text: String): List<Int> = withContext(Dispatchers.Default) {
+        val arr = nativeTokenize(text)
+        arr?.toList() ?: emptyList()
     }
 
-    override suspend fun applyLora(loraPath: String): Boolean {
-        Logger.d("LlamaEngine", "applyLora(stub-android): $loraPath")
-        return true
+    override suspend fun applyLora(loraPath: String): Boolean = withContext(Dispatchers.Default) {
+        Logger.d("LlamaEngineAndroid", "applyLora: $loraPath")
+        nativeApplyLora(loraPath)
     }
 
-    override fun getLoadedModelPath(): String? = modelPath
+    override fun getLoadedModelPath(): String? = loadedModelPath
 }
 
-actual fun createLlamaEngine(): LlamaEngine = AndroidLlamaEngine()
+actual fun createLlamaEngine(): LlamaEngine = LlamaEngineAndroid()

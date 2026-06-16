@@ -53,12 +53,39 @@ android {
     namespace = "com.habibi.financeslm.shared"
     compileSdk = 34
 
+    ndkVersion = "26.1.10909125"
+
     defaultConfig {
         minSdk = 26
+
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments += "-DCMAKE_BUILD_TYPE=Release"
+                arguments += "-DANDROID_STL=c++_shared"
+                cppFlags += "-std=c++17"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path("src/androidMain/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/androidMain/jniLibs")
+        }
     }
 }

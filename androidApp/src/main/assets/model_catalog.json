@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "qwen2.5-0.5b",
+      "name": "Qwen 2.5 0.5B",
+      "description": "Lightweight, fast. Good for quick tips.",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "sizeBytes": 394000000,
+      "minRamMb": 1024,
+      "quantization": "Q4_K_M",
+      "contextSize": 2048
+    },
+    {
+      "id": "qwen2.5-1.5b",
+      "name": "Qwen 2.5 1.5B",
+      "description": "Better reasoning, recommended for most devices.",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+      "sizeBytes": 986000000,
+      "minRamMb": 2048,
+      "quantization": "Q4_K_M",
+      "contextSize": 4096
+    },
+    {
+      "id": "qwen2.5-3b",
+      "name": "Qwen 2.5 3B",
+      "description": "Most capable. For high-end devices only.",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
+      "sizeBytes": 1900000000,
+      "minRamMb": 4096,
+      "quantization": "Q4_K_M",
+      "contextSize": 8192
+    }
+  ]
+}
