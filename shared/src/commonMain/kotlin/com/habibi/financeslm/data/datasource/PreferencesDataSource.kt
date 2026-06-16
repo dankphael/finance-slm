@@ -1,44 +1,59 @@
 package com.habibi.financeslm.data.datasource
 
 import com.habibi.financeslm.util.Logger
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.russhwolf.settings.Settings
 
-/**
- * Stub PreferencesDataSource for compilation.
- * Real implementation will use multiplatform-settings.
- */
-class PreferencesDataSource {
-    private val _prefs = mutableMapOf<String, String>()
+class PreferencesDataSource(
+    private val settings: Settings? = null
+) {
+    private val prefs: Settings by lazy {
+        settings ?: Settings()
+    }
 
-    fun getString(key: String, default: String = ""): String = _prefs[key] ?: default
+    init {
+        Logger.d("PreferencesDataSource", "Initialized")
+    }
 
-    suspend fun putString(key: String, value: String) {
-        _prefs[key] = value
+    fun getString(key: String, default: String = ""): String {
+        val value = prefs.getString(key, default)
+        Logger.d("PreferencesDataSource", "getString($key) = $value")
+        return value
+    }
+
+    fun putString(key: String, value: String) {
+        prefs.putString(key, value)
+        Logger.d("PreferencesDataSource", "putString($key, $value)")
     }
 
     fun getBoolean(key: String, default: Boolean = false): Boolean {
-        return _prefs[key]?.toBooleanStrictOrNull() ?: default
+        val value = prefs.getBoolean(key, default)
+        Logger.d("PreferencesDataSource", "getBoolean($key) = $value")
+        return value
     }
 
-    suspend fun putBoolean(key: String, value: Boolean) {
-        _prefs[key] = value.toString()
+    fun putBoolean(key: String, value: Boolean) {
+        prefs.putBoolean(key, value)
+        Logger.d("PreferencesDataSource", "putBoolean($key, $value)")
     }
 
     fun getLong(key: String, default: Long = 0L): Long {
-        return _prefs[key]?.toLongOrNull() ?: default
+        val value = prefs.getLong(key, default)
+        Logger.d("PreferencesDataSource", "getLong($key) = $value")
+        return value
     }
 
-    suspend fun putLong(key: String, value: Long) {
-        _prefs[key] = value.toString()
+    fun putLong(key: String, value: Long) {
+        prefs.putLong(key, value)
+        Logger.d("PreferencesDataSource", "putLong($key, $value)")
     }
 
-    suspend fun remove(key: String) {
-        _prefs.remove(key)
+    fun remove(key: String) {
+        prefs.remove(key)
+        Logger.d("PreferencesDataSource", "remove($key)")
     }
 
-    suspend fun clear() {
-        _prefs.clear()
+    fun clear() {
+        prefs.clear()
+        Logger.d("PreferencesDataSource", "clear()")
     }
 }

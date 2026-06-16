@@ -63,6 +63,10 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     implementation("androidx.compose.material:material-icons-extended")
 
+    // KMP shared module deps (needed for DI references)
+    implementation(libs.multiplatform.settings)
+    implementation(libs.kotlinx.serialization.json)
+
     // Debug
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.tooling.preview)

@@ -27,6 +27,7 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.sqldelight.coroutines)
             implementation(libs.multiplatform.settings)
+            implementation("com.russhwolf:multiplatform-settings-no-arg:1.2.0")
             implementation(libs.okio)
             implementation(libs.koin.core)
         }

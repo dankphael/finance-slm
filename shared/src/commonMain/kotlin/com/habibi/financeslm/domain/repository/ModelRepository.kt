@@ -13,4 +13,10 @@ interface ModelRepository {
     suspend fun getSelectedModel(): ModelInfo?
     suspend fun selectModel(modelId: String)
     fun getDownloadProgress(modelId: String): Flow<DownloadState>
+
+    /**
+     * Load the model catalog from a JSON string (read from bundled assets).
+     * This is an Android-specific concern exposed here for cross-module access.
+     */
+    fun loadCatalogFromJson(jsonContent: String)
 }
