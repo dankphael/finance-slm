@@ -1,0 +1,1 @@
+// Stale — platformModule expect moved to AppModule.kt (sdkModule)

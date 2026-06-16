@@ -1,0 +1,1 @@
+// Stale file — content moved to AppModule.kt (sdkModule)

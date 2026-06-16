@@ -1,0 +1,56 @@
+# Gradle
+.gradle/
+build/
+local.properties
+
+# Android
+*.iml
+.idea/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# KMP
+*.klib
+**.kotlin_module
+*.kotlin_builtins
+
+# Native
+*.o
+*.so
+*.a
+*.dylib
+obj/
+jniLibs/
+
+# Model files (large binaries — tracked with LFS on CI)
+models/
+*.gguf
+*.bin
+*.safetensors
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+*.swp
+*.swo
+*~
+
+# iOS
+xcuserdata/
+Pods/
+DerivedData/
+*.xcworkspace
+
+# Environment
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
