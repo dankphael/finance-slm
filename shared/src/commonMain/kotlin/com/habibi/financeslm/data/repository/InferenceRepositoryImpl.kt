@@ -8,9 +8,8 @@ import com.habibi.financeslm.inference.InferenceParams
 import com.habibi.financeslm.inference.LlamaConfig
 import com.habibi.financeslm.inference.LlamaEngine
 import com.habibi.financeslm.prompt.PromptBuilder
-import com.habibi.financeslm.util.CoroutineDispatchers
 import com.habibi.financeslm.util.Logger
-import kotlinx.coroutines.Dispatchers
+import com.habibi.financeslm.util.SingleThreadDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +32,7 @@ class InferenceRepositoryImpl(
      * This ensures thread safety — llama.cpp is NOT thread-safe.
      * Pat's gotcha G4: MUST use a single-thread dispatcher for ALL inference calls.
      */
-    private val inferenceDispatcher = Dispatchers.Default
+    private val inferenceDispatcher = SingleThreadDispatcher.dispatcher
 
     private val _insights = MutableStateFlow<List<FinanceInsight>>(emptyList())
     private var idCounter = 1L

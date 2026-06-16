@@ -1,7 +1,7 @@
 package com.habibi.financeslm.inference
 
 import com.habibi.financeslm.util.Logger
-import kotlinx.coroutines.Dispatchers
+import com.habibi.financeslm.util.SingleThreadDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
@@ -58,7 +58,7 @@ class LlamaEngineAndroid : LlamaEngine {
 
     // ── LlamaEngine interface implementation ──────────────────────────────
 
-    override suspend fun loadModel(path: String, config: LlamaConfig): Boolean = withContext(Dispatchers.Default) {
+    override suspend fun loadModel(path: String, config: LlamaConfig): Boolean = withContext(SingleThreadDispatcher.dispatcher) {
         Logger.d("LlamaEngineAndroid", "loadModel: $path")
         val result = nativeLoadModel(
             path = path,
@@ -73,7 +73,7 @@ class LlamaEngineAndroid : LlamaEngine {
         result
     }
 
-    override suspend fun unloadModel() = withContext(Dispatchers.Default) {
+    override suspend fun unloadModel() = withContext(SingleThreadDispatcher.dispatcher) {
         Logger.d("LlamaEngineAndroid", "unloadModel")
         nativeFreeModel()
         loadedModelPath = null
@@ -84,7 +84,7 @@ class LlamaEngineAndroid : LlamaEngine {
     override suspend fun infer(prompt: String, params: InferenceParams): Flow<String> = flow {
         Logger.d("LlamaEngineAndroid", "infer: prompt_len=${prompt.length}, max_tokens=${params.maxTokens}")
 
-        val result = withContext(Dispatchers.Default) {
+        val result = withContext(SingleThreadDispatcher.dispatcher) {
             nativeGenerate(
                 prompt = prompt,
                 maxTokens = params.maxTokens,
@@ -102,12 +102,12 @@ class LlamaEngineAndroid : LlamaEngine {
         }
     }
 
-    override suspend fun tokenize(text: String): List<Int> = withContext(Dispatchers.Default) {
+    override suspend fun tokenize(text: String): List<Int> = withContext(SingleThreadDispatcher.dispatcher) {
         val arr = nativeTokenize(text)
         arr?.toList() ?: emptyList()
     }
 
-    override suspend fun applyLora(loraPath: String): Boolean = withContext(Dispatchers.Default) {
+    override suspend fun applyLora(loraPath: String): Boolean = withContext(SingleThreadDispatcher.dispatcher) {
         Logger.d("LlamaEngineAndroid", "applyLora: $loraPath")
         nativeApplyLora(loraPath)
     }
