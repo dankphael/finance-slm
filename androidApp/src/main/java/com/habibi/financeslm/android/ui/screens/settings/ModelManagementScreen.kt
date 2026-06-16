@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.habibi.financeslm.domain.model.DownloadState
 import com.habibi.financeslm.domain.model.LoraAdapter
 import com.habibi.financeslm.domain.model.ModelInfo
+import com.habibi.financeslm.android.ui.viewmodel.LoraEditorViewModel
 
 // ── ModelManagementScreen ───────────────────────────────────────────────────
 
@@ -284,10 +285,23 @@ private fun AvailableModelCard(
 @Composable
 fun LoraEditorScreen(
     loraId: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    vm: LoraEditorViewModel
 ) {
-    // In a real app, this would use LoraEditorViewModel injected via Koin.
-    // For now, it's a simple form that shows the LoRA editing UI.
+    // Load existing lora on first composition
+    LaunchedEffect(loraId) {
+        if (loraId != "new") {
+            vm.loadExisting(loraId)
+        }
+    }
+
+    // Navigate back on save/delete complete
+    LaunchedEffect(vm.saveComplete.value) {
+        if (vm.saveComplete.value) {
+            onBack()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -314,8 +328,8 @@ fun LoraEditorScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = "",
-                onValueChange = {},
+                value = vm.name.value,
+                onValueChange = { vm.updateName(it) },
                 label = { Text("Name") },
                 placeholder = { Text("e.g., Aggressive Investor") },
                 modifier = Modifier.fillMaxWidth(),
@@ -325,8 +339,8 @@ fun LoraEditorScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = "",
-                onValueChange = {},
+                value = vm.instructionText.value,
+                onValueChange = { vm.updateInstructionText(it) },
                 label = { Text("Instruction Text") },
                 placeholder = { Text("Describe how the AI should behave...") },
                 modifier = Modifier
@@ -336,19 +350,30 @@ fun LoraEditorScreen(
                 maxLines = 15
             )
 
+            // Error display
+            vm.error.value?.let { errorMessage ->
+                Text(
+                    errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = onBack,
-                modifier = Modifier.fillMaxWidth()
+                onClick = { vm.save() },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !vm.isSaving.value
             ) {
-                Text("Save (Back)")
+                Text(if (vm.isSaving.value) "Saving..." else "Save")
             }
 
             if (loraId != "new") {
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
-                    onClick = {}, // Would call delete
+                    onClick = { vm.delete() },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error

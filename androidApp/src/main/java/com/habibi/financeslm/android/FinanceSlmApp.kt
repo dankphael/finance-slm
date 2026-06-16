@@ -4,6 +4,7 @@ import android.app.Application
 import com.habibi.financeslm.android.di.androidAppModule
 import com.habibi.financeslm.di.appModule
 import com.habibi.financeslm.di.sdkModule
+import com.habibi.financeslm.domain.repository.InferenceRepository
 import com.habibi.financeslm.domain.repository.ModelRepository
 import com.habibi.financeslm.platform.PlatformContext
 import com.habibi.financeslm.util.Logger
@@ -40,6 +41,21 @@ class FinanceSlmApp : Application() {
             Logger.d("FinanceSlmApp", "Model catalog loaded from assets")
         } catch (e: Exception) {
             Logger.e("FinanceSlmApp", "Failed to load model catalog", e)
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_MODERATE) {
+            try {
+                val repo = get<InferenceRepository>(InferenceRepository::class.java)
+                kotlinx.coroutines.runBlocking {
+                    repo.unloadModel()
+                }
+                Logger.d("FinanceSlmApp", "Model unloaded on trim memory (level=$level)")
+            } catch (e: Exception) {
+                Logger.e("FinanceSlmApp", "Error unloading model on trim memory", e)
+            }
         }
     }
 }

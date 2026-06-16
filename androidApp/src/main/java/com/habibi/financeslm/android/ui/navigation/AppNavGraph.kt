@@ -1,6 +1,7 @@
 package com.habibi.financeslm.android.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -15,6 +16,7 @@ import com.habibi.financeslm.android.ui.screens.settings.LoraEditorScreen
 import com.habibi.financeslm.android.ui.screens.settings.ModelManagementScreen
 import com.habibi.financeslm.android.ui.screens.settings.PermissionsManagementScreen
 import com.habibi.financeslm.android.ui.viewmodel.HomeViewModel
+import com.habibi.financeslm.android.ui.viewmodel.LoraEditorViewModel
 import com.habibi.financeslm.android.ui.viewmodel.ModelManagementViewModel
 import com.habibi.financeslm.android.ui.viewmodel.OnboardingViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -69,6 +71,10 @@ fun AppNavGraph(
         composable(Screen.Home.route) {
             val vm: HomeViewModel = koinViewModel()
 
+            LaunchedEffect(Unit) {
+                vm.loadActiveModel()
+            }
+
             HomeScreen(
                 insights = vm.insights.value,
                 loraAdapters = vm.loraAdapters.value,
@@ -107,7 +113,12 @@ fun AppNavGraph(
 
         composable(Screen.LoraEditor.route) { backStackEntry ->
             val loraId = backStackEntry.arguments?.getString("loraId") ?: "new"
-            LoraEditorScreen(loraId = loraId, onBack = { navController.popBackStack() })
+            val vm: LoraEditorViewModel = koinViewModel()
+            LoraEditorScreen(
+                loraId = loraId,
+                onBack = { navController.popBackStack() },
+                vm = vm
+            )
         }
 
         composable(Screen.PermissionsManagement.route) {

@@ -37,6 +37,9 @@ class InferenceRepositoryImpl(
     private val _insights = MutableStateFlow<List<FinanceInsight>>(emptyList())
     private var idCounter = 1L
 
+    /** Tracks the currently loaded model path — null means nothing loaded. */
+    private var loadedModelPath: String? = null
+
     override suspend fun generate(prompt: String, modelPath: String, loraPath: String?): Flow<String> = flow {
         val currentId = idCounter++
 
@@ -58,13 +61,24 @@ class InferenceRepositoryImpl(
             repeatPenalty = 1.1f
         )
 
-        var loaded = false
+        var isNewLoad = false
         try {
-            // 1. Load the model (on single-thread dispatcher)
-            loaded = withContext(inferenceDispatcher) {
-                llamaEngine.loadModel(modelPath, config)
+            // 1. Load model only if not already the active model
+            if (loadedModelPath != modelPath) {
+                isNewLoad = withContext(inferenceDispatcher) {
+                    // Unload previous model if switching
+                    if (loadedModelPath != null) {
+                        llamaEngine.unloadModel()
+                        loadedModelPath = null
+                    }
+                    val loaded = llamaEngine.loadModel(modelPath, config)
+                    if (loaded) {
+                        loadedModelPath = modelPath
+                    }
+                    loaded
+                }
             }
-            if (!loaded) {
+            if (!isNewLoad && loadedModelPath != modelPath) {
                 emit("[error] Failed to load model: $modelPath")
                 return@flow
             }
@@ -112,12 +126,13 @@ class InferenceRepositoryImpl(
             Logger.e("InferenceRepo", "Inference error", e)
             emit("[error] ${e.message}")
         } finally {
-            // 5. Always unload model (try/finally ensures this)
-            if (loaded) {
+            // 5. Only unload if THIS call loaded the model (not pre-loaded via loadModel())
+            if (isNewLoad) {
                 try {
                     withContext(inferenceDispatcher) {
                         llamaEngine.unloadModel()
                     }
+                    loadedModelPath = null
                     Logger.d("InferenceRepo", "Model unloaded")
                 } catch (e: Exception) {
                     Logger.e("InferenceRepo", "Error unloading model", e)
@@ -142,6 +157,40 @@ class InferenceRepositoryImpl(
         _insights.value = emptyList()
         Logger.d("InferenceRepo", "Cleared insights")
     }
+
+    override suspend fun loadModel(modelPath: String): Boolean = withContext(inferenceDispatcher) {
+        if (loadedModelPath == modelPath) {
+            Logger.d("InferenceRepo", "Model already loaded: $modelPath")
+            return@withContext true
+        }
+        // Unload previous model if any
+        if (loadedModelPath != null) {
+            llamaEngine.unloadModel()
+            loadedModelPath = null
+        }
+        val config = LlamaConfig(
+            contextSize = 2048,
+            batchSize = 512,
+            threadCount = 4,
+            gpuLayers = 0
+        )
+        val loaded = llamaEngine.loadModel(modelPath, config)
+        if (loaded) {
+            loadedModelPath = modelPath
+            Logger.d("InferenceRepo", "Model loaded: $modelPath")
+        }
+        loaded
+    }
+
+    override suspend fun unloadModel() = withContext(inferenceDispatcher) {
+        if (loadedModelPath != null) {
+            llamaEngine.unloadModel()
+            loadedModelPath = null
+            Logger.d("InferenceRepo", "Model unloaded via unloadModel()")
+        }
+    }
+
+    override suspend fun isModelLoaded(): Boolean = loadedModelPath != null
 
     /**
      * Extract a title from the generated text.

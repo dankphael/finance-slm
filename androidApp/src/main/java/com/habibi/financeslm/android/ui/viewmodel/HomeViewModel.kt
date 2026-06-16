@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habibi.financeslm.domain.model.FinanceInsight
 import com.habibi.financeslm.domain.model.LoraAdapter
+import com.habibi.financeslm.domain.repository.InferenceRepository
+import com.habibi.financeslm.domain.repository.ModelRepository
 import com.habibi.financeslm.domain.usecase.GenerateInsightUseCase
 import com.habibi.financeslm.domain.usecase.ManageLoraUseCase
+import com.habibi.financeslm.util.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +21,9 @@ import kotlinx.coroutines.launch
  */
 class HomeViewModel(
     private val generateInsightUseCase: GenerateInsightUseCase,
-    private val manageLoraUseCase: ManageLoraUseCase
+    private val manageLoraUseCase: ManageLoraUseCase,
+    private val inferenceRepository: InferenceRepository,
+    private val modelRepository: ModelRepository
 ) : ViewModel() {
 
     /** Insights list */
@@ -49,6 +54,24 @@ class HomeViewModel(
         viewModelScope.launch {
             manageLoraUseCase.getActive()?.let {
                 _activeLora.value = it
+            }
+        }
+    }
+
+    /**
+     * Pre-load the active model into memory so generate() calls don't
+     * incur the 2-5s load penalty. Called when navigating to the Home screen.
+     */
+    fun loadActiveModel() {
+        viewModelScope.launch {
+            try {
+                val selected = modelRepository.getSelectedModel()
+                if (selected != null && selected.downloadedPath != null) {
+                    inferenceRepository.loadModel(selected.downloadedPath!!)
+                    Logger.d("HomeViewModel", "Pre-loaded model: ${selected.name}")
+                }
+            } catch (e: Exception) {
+                Logger.e("HomeViewModel", "Failed to pre-load model", e)
             }
         }
     }
