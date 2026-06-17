@@ -87,7 +87,31 @@ fun AppNavGraph(
                 onDeleteLora = { vm.deleteLora(it) },
                 onNavigateToModelManagement = { navController.navigate(Screen.ModelManagement.route) },
                 onNavigateToLoraEditor = { loraId -> navController.navigate(Screen.LoraEditor.createRoute(loraId)) },
-                onNavigateToPermissionsManagement = { navController.navigate(Screen.PermissionsManagement.route) }
+                onNavigateToPermissionsManagement = { navController.navigate(Screen.PermissionsManagement.route) },
+                onExportData = {
+                    val path = vm.exportData()
+                    if (path != null) {
+                        android.widget.Toast.makeText(
+                            navController.context,
+                            "Exported to $path",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        android.widget.Toast.makeText(
+                            navController.context,
+                            "Export failed",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                onDeleteAllData = {
+                    vm.deleteAllData()
+                    android.widget.Toast.makeText(
+                        navController.context,
+                        "All data deleted",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
             )
         }
 

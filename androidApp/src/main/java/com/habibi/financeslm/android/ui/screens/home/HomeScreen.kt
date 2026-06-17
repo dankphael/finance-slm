@@ -447,8 +447,12 @@ private fun LoraCard(
 private fun SettingsTab(
     modifier: Modifier = Modifier,
     onModelManagement: () -> Unit = {},
-    onPermissionsManagement: () -> Unit = {}
+    onPermissionsManagement: () -> Unit = {},
+    onExportData: () -> Unit = {},
+    onDeleteAllData: () -> Unit = {}
 ) {
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         Text(
             "Settings",
@@ -488,5 +492,53 @@ private fun SettingsTab(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Data & Privacy", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "All data is stored locally on your device. No data is ever sent to any server.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(onClick = onExportData, modifier = Modifier.fillMaxWidth()) {
+                    Text("Export My Data")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { showDeleteConfirmation = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete All My Data")
+                }
+            }
+        }
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete All Data?") },
+            text = { Text("This will permanently delete all your insights and screen data. This action cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteAllData()
+                    showDeleteConfirmation = false
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
