@@ -38,7 +38,9 @@ fun HomeScreen(
     onDeleteLora: (String) -> Unit,
     onNavigateToModelManagement: () -> Unit,
     onNavigateToLoraEditor: (String) -> Unit,
-    onNavigateToPermissionsManagement: () -> Unit
+    onNavigateToPermissionsManagement: () -> Unit,
+    onExportData: () -> Unit = {},
+    onDeleteAllData: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -90,7 +92,9 @@ fun HomeScreen(
             2 -> SettingsTab(
                 modifier = Modifier.padding(padding),
                 onModelManagement = onNavigateToModelManagement,
-                onPermissionsManagement = onNavigateToPermissionsManagement
+                onPermissionsManagement = onNavigateToPermissionsManagement,
+                onExportData = onExportData,
+                onDeleteAllData = onDeleteAllData
             )
         }
     }

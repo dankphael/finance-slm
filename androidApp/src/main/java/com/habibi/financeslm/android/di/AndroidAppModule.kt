@@ -69,7 +69,7 @@ val androidAppModule = module {
 
     // ── ViewModels ──
     viewModel { OnboardingViewModel(get(), get()) }
-    viewModel { HomeViewModel(get(), get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get(), get()) }
     viewModel { LoraEditorViewModel(get()) }
     viewModel { ModelManagementViewModel(get(), get()) }
 }

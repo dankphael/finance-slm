@@ -6,6 +6,7 @@ import com.habibi.financeslm.domain.model.FinanceInsight
 import com.habibi.financeslm.domain.model.LoraAdapter
 import com.habibi.financeslm.domain.repository.InferenceRepository
 import com.habibi.financeslm.domain.repository.ModelRepository
+import com.habibi.financeslm.domain.repository.ScreenDataRepository
 import com.habibi.financeslm.domain.usecase.GenerateInsightUseCase
 import com.habibi.financeslm.domain.usecase.ManageLoraUseCase
 import com.habibi.financeslm.util.Logger
@@ -23,7 +24,8 @@ class HomeViewModel(
     private val generateInsightUseCase: GenerateInsightUseCase,
     private val manageLoraUseCase: ManageLoraUseCase,
     private val inferenceRepository: InferenceRepository,
-    private val modelRepository: ModelRepository
+    private val modelRepository: ModelRepository,
+    private val screenDataRepository: ScreenDataRepository
 ) : ViewModel() {
 
     /** Insights list */
@@ -126,6 +128,45 @@ class HomeViewModel(
     fun clearInsights() {
         viewModelScope.launch {
             generateInsightUseCase.getInsights() // triggers clear via the repo
+        }
+    }
+
+    /**
+     * Export all insights as JSON to a file.
+     * Returns the file path, or null on error.
+     */
+    fun exportData(): String? {
+        return try {
+            val insightsList = insights.value
+            val json = kotlinx.serialization.json.Json.encodeToString(
+                kotlinx.serialization.builtins.ListSerializer(kotlinx.serialization.serializer<FinanceInsight>()),
+                insightsList
+            )
+            val file = java.io.File(
+                com.habibi.financeslm.platform.PlatformContext.getInstance().filesDir,
+                "finance_slm_export_${System.currentTimeMillis()}.json"
+            )
+            file.writeText(json)
+            Logger.d("HomeViewModel", "Exported ${insightsList.size} insights to ${file.absolutePath}")
+            file.absolutePath
+        } catch (e: Exception) {
+            Logger.e("HomeViewModel", "Export failed", e)
+            null
+        }
+    }
+
+    /**
+     * Delete all user data (insights + screen data cache).
+     */
+    fun deleteAllData() {
+        viewModelScope.launch {
+            try {
+                inferenceRepository.clearInsights()
+                screenDataRepository.clear()
+                Logger.d("HomeViewModel", "All user data deleted")
+            } catch (e: Exception) {
+                Logger.e("HomeViewModel", "Failed to delete data", e)
+            }
         }
     }
 }
