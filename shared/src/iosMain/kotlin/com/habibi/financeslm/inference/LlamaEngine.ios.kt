@@ -32,6 +32,12 @@ class IosLlamaEngine : LlamaEngine {
         emit("Stub result. Real implementation will use cinterop → libllama.a.")
     }
 
+    override suspend fun inferStreaming(prompt: String, params: InferenceParams): Flow<String> = flow {
+        emit("[iOS stub inference] Processing: ${prompt.take(50)}...")
+        emit("\n")
+        emit("Stub result. Real implementation will use cinterop → libllama.a.")
+    }
+
     override suspend fun tokenize(text: String): List<Int> {
         return text.map { it.code }
     }

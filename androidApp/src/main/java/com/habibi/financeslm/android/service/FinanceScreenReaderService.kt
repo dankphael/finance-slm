@@ -18,6 +18,7 @@ import com.habibi.financeslm.service.ScreenReaderBridge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.util.UUID
 import java.util.regex.Pattern
@@ -124,6 +125,9 @@ class FinanceScreenReaderService : AccessibilityService() {
         // Double-check: only process events from allowed packages
         if (packageName !in ALLOWED_PACKAGES) return
 
+        // Privacy: skip notification events to avoid capturing OTPs/sensitive notifications
+        if (event.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) return
+
         // Extract the root node
         val rootNode = event.source ?: return
 
@@ -166,6 +170,7 @@ class FinanceScreenReaderService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        scope.cancel()
         super.onDestroy()
         android.util.Log.d(TAG, "AccessibilityService destroyed")
     }
@@ -175,30 +180,43 @@ class FinanceScreenReaderService : AccessibilityService() {
     // ---------------------------------------------------------------
 
     /**
-     * Recursively traverse the AccessibilityNodeInfo tree and collect text.
+     * Iteratively traverse the AccessibilityNodeInfo tree using a stack (ArrayDeque)
+     * to avoid StackOverflowError on deeply nested UIs (e.g., nested RecyclerViews).
      * Skips password fields and empty nodes.
      */
     private fun collectText(node: AccessibilityNodeInfo, results: MutableList<String>) {
-        // CRITICAL: Skip password fields
-        if (node.isPassword) return
+        val stack = ArrayDeque<AccessibilityNodeInfo>()
+        stack.addLast(node)
 
-        // Collect text from this node
-        val text = node.text?.toString()?.trim()
-        if (!text.isNullOrBlank()) {
-            results.add(text)
-        }
+        while (stack.isNotEmpty()) {
+            val current = stack.removeLastOrNull() ?: continue
 
-        // Collect content description (sometimes apps put data here)
-        val contentDesc = node.contentDescription?.toString()?.trim()
-        if (!contentDesc.isNullOrBlank()) {
-            results.add(contentDesc)
-        }
+            // CRITICAL: Skip password fields
+            if (current.isPassword) {
+                current.recycle()
+                continue
+            }
 
-        // Recurse into child nodes
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            collectText(child, results)
-            child.recycle()
+            // Collect text from this node
+            val text = current.text?.toString()?.trim()
+            if (!text.isNullOrBlank()) {
+                results.add(text)
+            }
+
+            // Collect content description (sometimes apps put data here)
+            val contentDesc = current.contentDescription?.toString()?.trim()
+            if (!contentDesc.isNullOrBlank()) {
+                results.add(contentDesc)
+            }
+
+            // Push child nodes onto the stack (reverse order so children
+            // are processed in original order when popped)
+            for (i in (current.childCount - 1) downTo 0) {
+                val child = current.getChild(i) ?: continue
+                stack.addLast(child)
+            }
+
+            current.recycle()
         }
     }
 

@@ -20,11 +20,11 @@ class GenerateInsightUseCase(
             ?: error("No model selected")
         val screenData = recentData.firstOrNull()
             ?: error("No screen data available")
-        return generate(screenData, selectedModel.downloadedPath!!, loraInstruction)
+        return generate(screenData, selectedModel.downloadedPath!!, selectedModel.chatTemplate, loraInstruction)
     }
 
-    suspend fun generate(screenData: ScreenData, modelPath: String, loraInstruction: String? = null): Flow<String> {
-        val prompt = promptBuilder.build(screenData, loraInstruction)
+    suspend fun generate(screenData: ScreenData, modelPath: String, chatTemplate: String = "qwen", loraInstruction: String? = null): Flow<String> {
+        val prompt = promptBuilder.build(screenData, loraInstruction, chatTemplate)
         return inferenceRepository.generate(
             prompt = prompt,
             modelPath = modelPath,

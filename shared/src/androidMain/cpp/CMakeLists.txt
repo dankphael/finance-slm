@@ -19,6 +19,7 @@ set_target_properties(llama PROPERTIES
 # ── JNI wrapper library ────────────────────────────────────────────────────
 add_library(llamajni SHARED
     llama_jni.cpp
+    crash_handler.cpp
 )
 
 target_include_directories(llamajni PRIVATE

@@ -12,6 +12,7 @@ interface LlamaEngine {
     suspend fun unloadModel()
     suspend fun isLoaded(): Boolean
     suspend fun infer(prompt: String, params: InferenceParams): Flow<String>
+    suspend fun inferStreaming(prompt: String, params: InferenceParams): Flow<String>
     suspend fun tokenize(text: String): List<Int>
     suspend fun applyLora(loraPath: String): Boolean
     fun getLoadedModelPath(): String?

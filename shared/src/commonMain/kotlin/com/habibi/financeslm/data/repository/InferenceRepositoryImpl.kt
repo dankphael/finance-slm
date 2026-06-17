@@ -12,9 +12,9 @@ import com.habibi.financeslm.prompt.PromptBuilder
 import com.habibi.financeslm.util.Logger
 import com.habibi.financeslm.util.SingleThreadDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.flow
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 
@@ -64,80 +64,87 @@ class InferenceRepositoryImpl(
         )
 
         var isNewLoad = false
-        var resultText: String
-        try {
-            // 1. Load model only if not already the active model
-            if (loadedModelPath != modelPath) {
-                isNewLoad = withContext(inferenceDispatcher) {
-                    if (loadedModelPath != null) {
-                        llamaEngine.unloadModel()
-                        loadedModelPath = null
+        return callbackFlow {
+            try {
+                // 1. Load model only if not already the active model
+                if (loadedModelPath != modelPath) {
+                    isNewLoad = withContext(inferenceDispatcher) {
+                        if (loadedModelPath != null) {
+                            llamaEngine.unloadModel()
+                            loadedModelPath = null
+                        }
+                        val loaded = llamaEngine.loadModel(modelPath, config)
+                        if (loaded) loadedModelPath = modelPath
+                        loaded
                     }
-                    val loaded = llamaEngine.loadModel(modelPath, config)
-                    if (loaded) loadedModelPath = modelPath
-                    loaded
                 }
-            }
-            if (!isNewLoad && loadedModelPath != modelPath) {
-                return flow { emit("[error] Failed to load model: $modelPath") }
-            }
-            Logger.d("InferenceRepo", "Model ready: $modelPath")
-
-            // 2. Apply LoRA if provided
-            if (!loraPath.isNullOrEmpty()) {
-                val loraApplied = withContext(inferenceDispatcher) {
-                    llamaEngine.applyLora(loraPath)
+                if (!isNewLoad && loadedModelPath != modelPath) {
+                    trySend("[error] Failed to load model: $modelPath")
+                    close()
+                    return@callbackFlow
                 }
-                if (!loraApplied) {
-                    Logger.w("InferenceRepo", "LoRA application returned false: $loraPath")
+                Logger.d("InferenceRepo", "Model ready: $modelPath")
+
+                // 2. Apply LoRA if provided
+                if (!loraPath.isNullOrEmpty()) {
+                    val loraApplied = withContext(inferenceDispatcher) {
+                        llamaEngine.applyLora(loraPath)
+                    }
+                    if (!loraApplied) {
+                        Logger.w("InferenceRepo", "LoRA application returned false: $loraPath")
+                    }
                 }
-            }
 
-            // 3. Run inference — collect token stream
-            val fullOutput = StringBuilder()
-            withContext(inferenceDispatcher) {
-                llamaEngine.infer(prompt, params).collect { token ->
-                    fullOutput.append(token)
+                // 3. Run inference — stream tokens in real-time via callbackFlow
+                val fullOutput = StringBuilder()
+                withContext(inferenceDispatcher) {
+                    llamaEngine.inferStreaming(prompt, params).collect { token ->
+                        fullOutput.append(token)
+                        trySend(token)
+                    }
                 }
-            }
 
-            resultText = fullOutput.toString()
-            Logger.d("InferenceRepo", "Inference complete: ${resultText.length} chars")
+                Logger.d("InferenceRepo", "Inference complete: ${fullOutput.length} chars")
 
-            // 4. Create and persist a FinanceInsight
-            val insight = FinanceInsight(
-                id = "insight_$currentId",
-                title = extractTitle(resultText),
-                summary = resultText.take(200),
-                detailText = resultText,
-                category = categorizeResult(resultText),
-                sourceApp = null,
-                timestamp = System.currentTimeMillis(),
-                loraAdapterId = null
-            )
-            database.financeInsightQueries.insertOrReplace(
-                insight.id, insight.title, insight.summary, insight.detailText,
-                insight.category.name, insight.sourceApp, insight.timestamp, insight.loraAdapterId
-            )
-            Logger.d("InferenceRepo", "Insight persisted: ${insight.id}")
+                // 4. Create and persist a FinanceInsight
+                val resultText = fullOutput.toString()
+                val insight = FinanceInsight(
+                    id = "insight_$currentId",
+                    title = extractTitle(resultText),
+                    summary = resultText.take(200),
+                    detailText = resultText,
+                    category = categorizeResult(resultText),
+                    sourceApp = null,
+                    timestamp = System.currentTimeMillis(),
+                    loraAdapterId = null
+                )
+                database.financeInsightQueries.insertOrReplace(
+                    insight.id, insight.title, insight.summary, insight.detailText,
+                    insight.category.name, insight.sourceApp, insight.timestamp, insight.loraAdapterId
+                )
+                Logger.d("InferenceRepo", "Insight persisted: ${insight.id}")
 
-        } catch (e: Exception) {
-            Logger.e("InferenceRepo", "Inference error", e)
-            return flow { emit("[error] ${e.message}") }
-        } finally {
-            // 5. Only unload if THIS call loaded the model (not pre-loaded via loadModel())
-            if (isNewLoad) {
-                try {
-                    withContext(inferenceDispatcher) { llamaEngine.unloadModel() }
-                    loadedModelPath = null
-                    Logger.d("InferenceRepo", "Model unloaded")
-                } catch (e: Exception) {
-                    Logger.e("InferenceRepo", "Error unloading model", e)
+            } catch (e: Exception) {
+                Logger.e("InferenceRepo", "Inference error", e)
+                trySend("[error] ${e.message}")
+            } catch (e: Throwable) {
+                // Catch native crash exceptions (RuntimeException thrown from signal handler)
+                Logger.e("InferenceRepo", "Native crash caught: ${e.message}")
+                trySend("[error] Native inference engine error: ${e.message}")
+            } finally {
+                // 5. Only unload if THIS call loaded the model (not pre-loaded via loadModel())
+                if (isNewLoad) {
+                    try {
+                        withContext(inferenceDispatcher) { llamaEngine.unloadModel() }
+                        loadedModelPath = null
+                        Logger.d("InferenceRepo", "Model unloaded")
+                    } catch (e: Exception) {
+                        Logger.e("InferenceRepo", "Error unloading model", e)
+                    }
                 }
+                close()
             }
         }
-
-        return flow { emit(resultText) }
     }
 
     override suspend fun generateInsight(screenData: ScreenData, loraInstruction: String?): Flow<String> {

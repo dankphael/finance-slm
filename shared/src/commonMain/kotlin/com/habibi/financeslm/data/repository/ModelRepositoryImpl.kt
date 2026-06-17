@@ -12,7 +12,6 @@ import com.habibi.financeslm.util.Logger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 
 /**
@@ -26,7 +25,8 @@ class ModelRepositoryImpl(
     private val downloadDataSource: ModelDownloadDataSource,
     private val storageDataSource: ModelStorageDataSource,
     private val preferencesDataSource: PreferencesDataSource,
-    private val fileSystem: FileSystem
+    private val fileSystem: FileSystem,
+    private val downloadEnqueuer: DownloadEnqueuer
 ) : ModelRepository {
 
     private val _catalog = MutableStateFlow<List<ModelInfo>>(emptyList())
@@ -70,29 +70,28 @@ class ModelRepositoryImpl(
         Logger.d("ModelRepo", "downloadModel: $modelId")
 
         val destinationPath = storageDataSource.getModelPath(modelId)
-
-        // Start download via data source — the flow does the work
-        val downloadFlow = downloadDataSource.download(
+        val rawFlow = downloadEnqueuer.enqueueDownload(
             url = model.url,
             destinationPath = destinationPath,
-            expectedSha256 = model.sha256
+            expectedSha256 = model.sha256,
+            modelId = modelId
         )
 
-        // Collect the flow inline to track completion
-        return callbackFlow {
-            downloadFlow.collect { state ->
+        // Wrap the flow to handle completion (save model to storage, refresh list)
+        return kotlinx.coroutines.flow.callbackFlow {
+            rawFlow.collect { state ->
                 trySend(state)
                 if (state is DownloadState.Done) {
-                    val completedModel = model.copy(downloadedPath = destinationPath)
-                    storageDataSource.saveModel(completedModel)
-                    refreshDownloadedModels()
-                    Logger.d("ModelRepo", "Download complete for $modelId")
-                } else if (state is DownloadState.Error) {
-                    Logger.e("ModelRepo", "Download error for $modelId: ${state.message}")
+                            val completedModel = model.copy(downloadedPath = destinationPath)
+                            storageDataSource.saveModel(completedModel)
+                            refreshDownloadedModels()
+                            Logger.d("ModelRepo", "Download complete for $modelId")
+                        } else if (state is DownloadState.Error) {
+                            Logger.e("ModelRepo", "Download error for $modelId: ${state.message}")
+                        }
+                    }
+                    close()
                 }
-            }
-            close()
-        }
     }
 
     override suspend fun deleteModel(modelId: String) {

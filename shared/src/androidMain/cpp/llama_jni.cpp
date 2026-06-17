@@ -12,6 +12,8 @@
 
 #include "llama.h"
 
+#include "crash_handler.h"
+
 #define LOG_TAG "LlamaEngine"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -103,13 +105,153 @@ Java_com_habibi_financeslm_inference_LlamaEngineAndroid_nativeFreeModel(
     }
 }
 
-// ── JNI: generate ─────────────────────────────────────────────────────────
+// ── JNI: generateStreaming ────────────────────────────────────────────────
+// Java: external fun nativeGenerateStreaming(
+//     prompt: String, maxTokens: Int, temperature: Float, topP: Float,
+//     topK: Int, repeatPenalty: Float, callback: (String) -> Unit
+// )
+//
+// Runs text generation and calls the callback for each decoded token piece.
+// This replaces the blocking nativeGenerate for streaming UIs.
+extern "C" void JNICALL
+Java_com_habibi_financeslm_inference_LlamaEngineAndroid_nativeGenerateStreaming(
+    JNIEnv * env, jobject /*thiz*/,
+    jstring prompt,
+    jint maxTokens,
+    jfloat temperature,
+    jfloat topP,
+    jint topK,
+    jfloat repeatPenalty,
+    jobject callback)
+{
+    if (!g_model || !g_context) {
+        LOGE("generateStreaming: model not loaded");
+        // Call callback with empty string to signal error
+        jclass callbackClass = env->GetObjectClass(callback);
+        jmethodID acceptMethod = env->GetMethodID(callbackClass, "accept", "(Ljava/lang/String;)V");
+        if (acceptMethod) {
+            jstring empty = env->NewStringUTF("[error] Model not loaded");
+            env->CallVoidMethod(callback, acceptMethod, empty);
+            env->DeleteLocalRef(empty);
+        }
+        env->DeleteLocalRef(callbackClass);
+        return;
+    }
+
+    // Resolve the callback's accept(String) method once
+    jclass callbackClass = env->GetObjectClass(callback);
+    jmethodID acceptMethod = env->GetMethodID(callbackClass, "accept", "(Ljava/lang/String;)V");
+    if (!acceptMethod) {
+        LOGE("generateStreaming: callback has no accept(String) method");
+        env->DeleteLocalRef(callbackClass);
+        return;
+    }
+
+    std::string promptStr = jstring_to_string(env, prompt);
+    LOGI("generateStreaming: prompt_len=%zu, max_tokens=%d, temp=%.2f",
+         promptStr.size(), maxTokens, temperature);
+
+    // Tokenize the prompt
+    const struct llama_vocab * vocab = llama_model_get_vocab(g_model);
+    if (!vocab) {
+        LOGE("generateStreaming: no vocab");
+        jstring err = env->NewStringUTF("[error] No vocabulary");
+        env->CallVoidMethod(callback, acceptMethod, err);
+        env->DeleteLocalRef(err);
+        env->DeleteLocalRef(callbackClass);
+        return;
+    }
+
+    int32_t n_tokens = static_cast<int32_t>(promptStr.size()) + 4;
+    std::vector<llama_token> tokens(n_tokens);
+
+    int32_t actual = llama_tokenize(
+        vocab,
+        promptStr.c_str(),
+        static_cast<int32_t>(promptStr.size()),
+        tokens.data(),
+        static_cast<int32_t>(tokens.size()),
+        true,   // add_bos
+        false   // parse_special
+    );
+
+    if (actual < 0) {
+        tokens.resize(-actual);
+        actual = llama_tokenize(
+            vocab,
+            promptStr.c_str(),
+            static_cast<int32_t>(promptStr.size()),
+            tokens.data(),
+            static_cast<int32_t>(tokens.size()),
+            true, false);
+    }
+    tokens.resize(actual);
+
+    LOGI("generateStreaming: tokenized to %zu tokens", tokens.size());
+
+    // Eval the prompt
+    llama_batch batch = llama_batch_get_one(tokens.data(), static_cast<int32_t>(tokens.size()));
+    if (llama_decode(g_context, batch) != 0) {
+        LOGE("generateStreaming: prompt eval failed");
+        jstring err = env->NewStringUTF("[error] Prompt evaluation failed");
+        env->CallVoidMethod(callback, acceptMethod, err);
+        env->DeleteLocalRef(err);
+        env->DeleteLocalRef(callbackClass);
+        return;
+    }
+
+    // Prepare sampler chain
+    auto sparams = llama_sampler_chain_default_params();
+    llama_sampler * smpl = llama_sampler_chain_init(sparams);
+
+    if (topK > 0) {
+        llama_sampler_chain_add(smpl, llama_sampler_init_top_k(static_cast<int32_t>(topK)));
+    }
+    llama_sampler_chain_add(smpl, llama_sampler_init_top_p(topP, 1));
+    llama_sampler_chain_add(smpl, llama_sampler_init_temp(temperature));
+    llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+
+    // Generate tokens — call callback for each decoded piece
+    for (int32_t i = 0; i < maxTokens; i++) {
+        const llama_token id = llama_sampler_sample(smpl, g_context, -1);
+
+        if (id == llama_vocab_eos(vocab)) {
+            LOGI("generateStreaming: EOS at token %d", i);
+            break;
+        }
+
+        // Convert token to piece
+        char buf[128];
+        int32_t len = llama_token_to_piece(vocab, id, buf, sizeof(buf), 0, false);
+        if (len > 0) {
+            // Convert C string to Java string and pass to callback
+            jstring tokenStr = env->NewStringUTF(std::string(buf, static_cast<size_t>(len)).c_str());
+            env->CallVoidMethod(callback, acceptMethod, tokenStr);
+            env->DeleteLocalRef(tokenStr);
+        }
+
+        // Prepare next batch with single token
+        llama_token next_tokens[] = { id };
+        batch = llama_batch_get_one(next_tokens, 1);
+        if (llama_decode(g_context, batch) != 0) {
+            LOGE("generateStreaming: decode failed at token %d", i);
+            break;
+        }
+    }
+
+    llama_sampler_free(smpl);
+    LOGI("generateStreaming: completed %d tokens", maxTokens);
+
+    env->DeleteLocalRef(callbackClass);
+}
+
+// ── JNI: generate (blocking) ─────────────────────────────────────────────
 // Java: external fun nativeGenerate(prompt: String, maxTokens: Int,
 //                                    temperature: Float, topP: Float, topK: Int,
 //                                    repeatPenalty: Float): String
 //
-// Runs synchronous text generation and returns the complete output.
-// For streaming, this would need a callback — keeping it simple for the stub.
+// Kept for backward compatibility — returns the complete output.
+// Prefer nativeGenerateStreaming for real-time UI updates.
 extern "C" jstring JNICALL
 Java_com_habibi_financeslm_inference_LlamaEngineAndroid_nativeGenerate(
     JNIEnv * env, jobject /*thiz*/,
@@ -336,6 +478,11 @@ static const JNINativeMethod gMethods[] = {
         reinterpret_cast<void *>(Java_com_habibi_financeslm_inference_LlamaEngineAndroid_nativeGenerate)
     },
     {
+        "nativeGenerateStreaming",
+        "(Ljava/lang/String;IFFFFLjava/util/function/Consumer;)V",
+        reinterpret_cast<void *>(Java_com_habibi_financeslm_inference_LlamaEngineAndroid_nativeGenerateStreaming)
+    },
+    {
         "nativeTokenize",
         "(Ljava/lang/String;)[I",
         reinterpret_cast<void *>(Java_com_habibi_financeslm_inference_LlamaEngineAndroid_nativeTokenize)
@@ -359,6 +506,9 @@ extern "C" jint JNI_OnLoad(JavaVM * vm, void * /*reserved*/) {
         return JNI_ERR;
     }
 
+    // Install crash handlers for SIGSEGV and SIGABRT
+    installCrashHandler(env);
+
     jclass clazz = env->FindClass(
         "com/habibi/financeslm/inference/LlamaEngineAndroid");
     if (!clazz) {
@@ -375,5 +525,17 @@ extern "C" jint JNI_OnLoad(JavaVM * vm, void * /*reserved*/) {
 
     LOGI("JNI_OnLoad: registered %zu native methods",
          sizeof(gMethods) / sizeof(gMethods[0]));
+
+    // Also call llama_backend_init here to ensure it's initialized before first use
+    // (it's idempotent, so repeated calls from loadModel are safe)
+    llama_backend_init();
+
     return JNI_VERSION_1_6;
+}
+
+extern "C" void JNI_OnUnload(JavaVM * /*vm*/, void * /*reserved*/) {
+    // Clean up backend resources and crash handlers
+    llama_backend_free();
+    uninstallCrashHandler();
+    LOGI("JNI_OnUnload: backend freed, crash handlers removed");
 }

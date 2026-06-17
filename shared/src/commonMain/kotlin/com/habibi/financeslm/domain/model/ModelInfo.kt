@@ -13,5 +13,6 @@ data class ModelInfo(
     val minRamMb: Int,
     val quantization: String,
     val contextSize: Int,
+    val chatTemplate: String = "qwen",
     val downloadedPath: String? = null
 )

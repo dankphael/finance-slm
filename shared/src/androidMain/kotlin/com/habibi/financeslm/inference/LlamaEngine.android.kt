@@ -3,8 +3,10 @@ package com.habibi.financeslm.inference
 import com.habibi.financeslm.util.Logger
 import com.habibi.financeslm.util.SingleThreadDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import java.util.function.Consumer
 
 /**
  * Android LlamaEngine — JNI bridge to libllama.so.
@@ -37,6 +39,16 @@ class LlamaEngineAndroid : LlamaEngine {
         topK: Int,
         repeatPenalty: Float
     ): String
+
+    private external fun nativeGenerateStreaming(
+        prompt: String,
+        maxTokens: Int,
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        repeatPenalty: Float,
+        callback: Consumer<String>
+    )
 
     private external fun nativeTokenize(text: String): IntArray?
 
@@ -100,6 +112,26 @@ class LlamaEngineAndroid : LlamaEngine {
         } else {
             emit("[error] Inference returned empty result")
         }
+    }
+
+    override suspend fun inferStreaming(prompt: String, params: InferenceParams): Flow<String> = callbackFlow {
+        Logger.d("LlamaEngineAndroid", "inferStreaming: prompt_len=${prompt.length}, max_tokens=${params.maxTokens}")
+
+        withContext(SingleThreadDispatcher.dispatcher) {
+            nativeGenerateStreaming(
+                prompt = prompt,
+                maxTokens = params.maxTokens,
+                temperature = params.temperature,
+                topP = params.topP,
+                topK = params.topK,
+                repeatPenalty = params.repeatPenalty,
+                callback = Consumer { token: String ->
+                    trySend(token)
+                }
+            )
+        }
+
+        close()
     }
 
     override suspend fun tokenize(text: String): List<Int> = withContext(SingleThreadDispatcher.dispatcher) {

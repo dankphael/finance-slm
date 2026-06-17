@@ -10,7 +10,8 @@
       "sha256": "",
       "minRamMb": 1024,
       "quantization": "Q4_K_M",
-      "contextSize": 2048
+      "contextSize": 2048,
+      "chatTemplate": "qwen"
     },
     {
       "id": "qwen2.5-1.5b",
@@ -21,7 +22,8 @@
       "sha256": "",
       "minRamMb": 2048,
       "quantization": "Q4_K_M",
-      "contextSize": 4096
+      "contextSize": 4096,
+      "chatTemplate": "qwen"
     },
     {
       "id": "qwen2.5-3b",
@@ -32,7 +34,8 @@
       "sha256": "",
       "minRamMb": 4096,
       "quantization": "Q4_K_M",
-      "contextSize": 8192
+      "contextSize": 8192,
+      "chatTemplate": "qwen"
     }
   ]
 }

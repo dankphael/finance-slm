@@ -6,7 +6,7 @@ class PromptBuilder {
     private val template = PromptTemplate()
     private val systemPrompts = SystemPrompts()
 
-    fun build(screenData: ScreenData, loraInstruction: String? = null): String {
+    fun build(screenData: ScreenData, loraInstruction: String? = null, chatTemplate: String = "qwen"): String {
         val systemPrompt = if (loraInstruction != null) {
             "${systemPrompts.defaultFinanceAdvisor()}\n\nAdditional instruction: $loraInstruction"
         } else {
@@ -16,7 +16,7 @@ class PromptBuilder {
         val screenContent = formatScreenData(screenData)
         val userPrompt = template.renderUserPrompt(screenContent)
 
-        return template.renderChatTemplate(systemPrompt, userPrompt)
+        return template.renderChatTemplate(systemPrompt, userPrompt, chatTemplate)
     }
 
     private fun formatScreenData(data: ScreenData): String {

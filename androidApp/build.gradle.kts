@@ -67,6 +67,9 @@ dependencies {
     implementation(libs.multiplatform.settings)
     implementation(libs.kotlinx.serialization.json)
 
+    // WorkManager for background model downloads
+    implementation(libs.work.runtime.ktx)
+
     // Debug
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.tooling.preview)
