@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project("llamajni" CXX)
+project("llamajni" C CXX)
 
 # ── llama.cpp source (git submodule at the project root) ────────────────────
 set(LLAMA_CPP_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../llama-cpp")
