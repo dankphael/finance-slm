@@ -99,9 +99,12 @@ finance-slm/
 │   │   │   ├── crash_handler.cpp        # Native crash signal handlers
 │   │   │   └── CMakeLists.txt
 │   │   └── kotlin/                      # Android actual implementations
-│   ├── src/iosMain/                     # iOS stubs (future)
+│   ├── src/iosMain/                     # iOS actuals (cinterop llama.cpp, Ktor/okio)
+│   ├── src/nativeInterop/cinterop/      # llama.def (iOS cinterop binding)
 │   └── build.gradle.kts
 │
+├── iosApp/                              # SwiftUI app (XcodeGen project.yml) — build on macOS
+├── scripts/build-llama-ios.sh          # Builds llama.cpp static libs for iOS
 ├── docs/
 │   └── review-and-enhancements.md       # Architecture review & enhancement proposals
 │
@@ -224,9 +227,22 @@ bash scripts/compute-model-checksums.sh   # downloads each model and prints its 
 Paste each value into the matching model's `sha256` field; the app then
 verifies every download and rejects corrupted/tampered files.
 
+### iOS
+
+iOS is now a buildable target (build on macOS — see [`iosApp/README.md`](iosApp/README.md)):
+a consumable `Shared` framework, real Kotlin/Native platform implementations
+(Foundation paths, okio filesystem + SHA-256, Ktor/Darwin downloads), llama.cpp
+inference via cinterop, and a SwiftUI app. Screen-reading insights remain
+Android-only (iOS sandboxing has no AccessibilityService equivalent); the iOS
+app uses manual text input instead. The shared module and the SwiftUI app cannot
+be compiled on Linux/CI — they require a Mac + Xcode.
+
 ### Known Issues
 
-- iOS module is stubbed (Android-first development)
+- iOS on-device inference requires building the llama.cpp static libs on a Mac
+  first (`scripts/build-llama-ios.sh`); a few Kotlin↔Swift interop names and
+  llama.cpp C symbols may need minor Xcode-side adjustment (documented in
+  `iosApp/README.md`).
 
 ## License
 
