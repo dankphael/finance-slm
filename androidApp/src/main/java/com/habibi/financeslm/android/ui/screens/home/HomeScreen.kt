@@ -14,7 +14,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import android.content.Intent
+import android.net.Uri
+import com.habibi.financeslm.android.R
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.habibi.financeslm.domain.model.FinanceInsight
@@ -452,6 +457,8 @@ private fun SettingsTab(
     onDeleteAllData: () -> Unit = {}
 ) {
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val privacyUrl = stringResource(R.string.privacy_policy_url)
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         Text(
@@ -516,6 +523,20 @@ private fun SettingsTab(
                     )
                 ) {
                     Text("Delete All My Data")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("View Privacy Policy")
                 }
             }
         }

@@ -5,4 +5,5 @@
     <string name="notification_channel_name">Screen Reading</string>
     <string name="notification_title">Finance SLM Active</string>
     <string name="notification_text">Monitoring finance apps for insights</string>
+    <string name="privacy_policy_url">https://github.com/dankphael/finance-slm/blob/main/PRIVACY.md</string>
 </resources>

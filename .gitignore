@@ -46,6 +46,11 @@ Pods/
 DerivedData/
 *.xcworkspace
 
+# Signing — never commit keystores or their passwords
+keystore.properties
+*.jks
+*.keystore
+
 # Environment
 .env
 .env.local
