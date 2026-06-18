@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
@@ -11,10 +12,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.habibi.financeslm.android.R
+import com.habibi.financeslm.android.ui.components.FinanceCard
+import com.habibi.financeslm.android.ui.components.SectionHeader
+import com.habibi.financeslm.android.ui.theme.Spacing
+import com.habibi.financeslm.android.util.formatFileSize
 import com.habibi.financeslm.domain.model.DownloadState
-import com.habibi.financeslm.domain.model.LoraAdapter
 import com.habibi.financeslm.domain.model.ModelInfo
 import com.habibi.financeslm.android.ui.viewmodel.LoraEditorViewModel
 
@@ -41,19 +48,19 @@ fun ModelManagementScreen(
         val modelName = downloadedModels.find { it.id == confirmDeleteModelId }?.name ?: confirmDeleteModelId
         AlertDialog(
             onDismissRequest = onDismissDeleteConfirmation,
-            title = { Text("Delete Model") },
+            title = { Text(stringResource(R.string.delete_model_title)) },
             text = { Text("Are you sure you want to delete \"$modelName\"? This cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = onConfirmDeleteModel,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismissDeleteConfirmation) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -62,9 +69,11 @@ fun ModelManagementScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Model Management") },
+                title = { Text(stringResource(R.string.model_management_title)) },
                 navigationIcon = {
-                    TextButton(onClick = onBack) { Text("Back") }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
                 }
             )
         }
@@ -73,27 +82,22 @@ fun ModelManagementScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
             // ── Downloaded Models Section ──
             item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Downloaded Models",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                SectionHeader(title = stringResource(R.string.downloaded_models))
             }
 
             if (downloadedModels.isEmpty()) {
                 item {
                     Text(
-                        "No models downloaded yet.",
+                        stringResource(R.string.no_models_downloaded),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        modifier = Modifier.padding(vertical = Spacing.sm)
                     )
                 }
             } else {
@@ -109,32 +113,22 @@ fun ModelManagementScreen(
 
             // ── Available Models Section ──
             item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Available Models",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                Spacer(modifier = Modifier.height(Spacing.lg))
+                SectionHeader(
+                    title = stringResource(R.string.available_models),
+                    subtitle = stringResource(R.string.available_models_body)
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            item {
-                Text(
-                    "Models not yet downloaded — tap to download.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.xs))
             }
 
             val notDownloaded = catalog.filter { c -> downloadedModels.none { it.id == c.id } }
             if (notDownloaded.isEmpty()) {
                 item {
                     Text(
-                        "All catalog models are downloaded.",
+                        stringResource(R.string.all_models_downloaded),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        modifier = Modifier.padding(vertical = Spacing.sm)
                     )
                 }
             } else {
@@ -148,7 +142,7 @@ fun ModelManagementScreen(
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(24.dp)) }
+            item { Spacer(modifier = Modifier.height(Spacing.xl)) }
         }
     }
 }
@@ -160,58 +154,56 @@ private fun DownloadedModelCard(
     onSetActive: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
+    FinanceCard(
         colors = if (isActive) CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ) else CardDefaults.cardColors()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(model.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        if (isActive) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = "Active",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(model.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    if (isActive) {
+                        Spacer(modifier = Modifier.width(Spacing.sm))
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = stringResource(R.string.active),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
-                    Text(
-                        model.downloadedPath ?: "Path unknown",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
+                }
+                Text(
+                    model.downloadedPath ?: "Path unknown",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(Spacing.md))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            if (!isActive) {
+                FilledTonalButton(onClick = onSetActive, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(Spacing.xs))
+                    Text(stringResource(R.string.set_as_active))
+                }
+            } else {
+                OutlinedButton(onClick = {}, modifier = Modifier.weight(1f), enabled = false) {
+                    Text(stringResource(R.string.active))
                 }
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (!isActive) {
-                    FilledTonalButton(onClick = onSetActive, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Set as Active")
-                    }
-                } else {
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f), enabled = false) {
-                        Text("Active")
-                    }
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -224,55 +216,49 @@ private fun AvailableModelCard(
     downloadState: DownloadState,
     onDownload: () -> Unit
 ) {
-    val sizeText = when {
-        model.sizeBytes >= 1_000_000_000 -> "${model.sizeBytes / 1_000_000_000}.${(model.sizeBytes % 1_000_000_000) / 100_000_000}GB"
-        model.sizeBytes >= 1_000_000 -> "${model.sizeBytes / 1_000_000}MB"
-        else -> "${model.sizeBytes / 1_000}KB"
-    }
+    val sizeText = formatFileSize(model.sizeBytes)
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(model.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(
-                "~$sizeText • ${model.quantization} • ${model.contextSize} ctx",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+    FinanceCard {
+        Text(model.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            "$sizeText • ${model.quantization} • ${model.contextSize} ctx",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(Spacing.md))
 
-            when (val state = downloadState) {
-                is DownloadState.Downloading -> {
-                    LinearProgressIndicator(
-                        progress = { if (state.progress >= 0f) state.progress else 0f },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    val percent = if (state.progress >= 0f) (state.progress * 100).toInt() else 0
-                    Text(
-                        "Downloading... $percent%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+        when (val state = downloadState) {
+            is DownloadState.Downloading -> {
+                LinearProgressIndicator(
+                    progress = { if (state.progress >= 0f) state.progress else 0f },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                val percent = if (state.progress >= 0f) (state.progress * 100).toInt() else 0
+                Text(
+                    "Downloading… $percent%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            is DownloadState.Error -> {
+                Text(
+                    state.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.retry))
                 }
-                is DownloadState.Error -> {
-                    Text(
-                        state.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
-                        Text("Retry")
-                    }
-                }
-                else -> {
-                    Button(
-                        onClick = onDownload,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isDownloading
-                    ) {
-                        Text("Download ($sizeText)")
-                    }
+            }
+            else -> {
+                Button(
+                    onClick = onDownload,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isDownloading
+                ) {
+                    Text("Download ($sizeText)")
                 }
             }
         }
@@ -288,6 +274,15 @@ fun LoraEditorScreen(
     onBack: () -> Unit,
     vm: LoraEditorViewModel
 ) {
+    // Reactive state from the ViewModel
+    val name by vm.name.collectAsStateWithLifecycle()
+    val instructionText by vm.instructionText.collectAsStateWithLifecycle()
+    val isSaving by vm.isSaving.collectAsStateWithLifecycle()
+    val saveComplete by vm.saveComplete.collectAsStateWithLifecycle()
+    val error by vm.error.collectAsStateWithLifecycle()
+
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
     // Load existing lora on first composition
     LaunchedEffect(loraId) {
         if (loraId != "new") {
@@ -296,8 +291,8 @@ fun LoraEditorScreen(
     }
 
     // Navigate back on save/delete complete
-    LaunchedEffect(vm.saveComplete.value) {
-        if (vm.saveComplete.value) {
+    LaunchedEffect(saveComplete) {
+        if (saveComplete) {
             onBack()
         }
     }
@@ -307,7 +302,9 @@ fun LoraEditorScreen(
             TopAppBar(
                 title = { Text(if (loraId == "new") "New LoRA" else "Edit LoRA") },
                 navigationIcon = {
-                    TextButton(onClick = onBack) { Text("Back") }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
                 }
             )
         }
@@ -316,7 +313,7 @@ fun LoraEditorScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(Spacing.lg)
         ) {
             Text(
                 if (loraId == "new") "Create a new prompt-based LoRA adapter"
@@ -325,24 +322,26 @@ fun LoraEditorScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
 
             OutlinedTextField(
-                value = vm.name.value,
+                value = name,
                 onValueChange = { vm.updateName(it) },
                 label = { Text("Name") },
                 placeholder = { Text("e.g., Aggressive Investor") },
+                isError = error != null && name.isBlank(),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
 
             OutlinedTextField(
-                value = vm.instructionText.value,
+                value = instructionText,
                 onValueChange = { vm.updateInstructionText(it) },
                 label = { Text("Instruction Text") },
-                placeholder = { Text("Describe how the AI should behave...") },
+                placeholder = { Text("Describe how the AI should behave…") },
+                supportingText = { Text("${instructionText.length} characters") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 160.dp),
@@ -351,40 +350,71 @@ fun LoraEditorScreen(
             )
 
             // Error display
-            vm.error.value?.let { errorMessage ->
+            error?.let { errorMessage ->
                 Text(
                     errorMessage,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = Spacing.sm)
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
 
             Button(
                 onClick = { vm.save() },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !vm.isSaving.value
+                enabled = !isSaving
             ) {
-                Text(if (vm.isSaving.value) "Saving..." else "Save")
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(modifier = Modifier.width(Spacing.sm))
+                    Text("Saving…")
+                } else {
+                    Text("Save")
+                }
             }
 
             if (loraId != "new") {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
                 OutlinedButton(
-                    onClick = { vm.delete() },
+                    onClick = { showDeleteConfirm = true },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
                     Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Delete")
+                    Spacer(modifier = Modifier.width(Spacing.xs))
+                    Text(stringResource(R.string.delete))
                 }
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete adapter?") },
+            text = { Text("This LoRA adapter will be permanently removed.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    vm.delete()
+                }) {
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }
 
@@ -398,7 +428,9 @@ fun PermissionsManagementScreen(onBack: () -> Unit) {
             TopAppBar(
                 title = { Text("Permissions") },
                 navigationIcon = {
-                    TextButton(onClick = onBack) { Text("Back") }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
                 }
             )
         }
@@ -407,39 +439,37 @@ fun PermissionsManagementScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(Spacing.lg)
         ) {
             Text(
                 "Manage permissions for screen reading.",
                 style = MaterialTheme.typography.bodyLarge
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
             Text(
                 "Accessibility Service status is configured in System Settings.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Accessibility Service",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Finance SLM reads screen content via Android Accessibility Service. Data never leaves your device.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        "To enable: Settings → Accessibility → Installed Apps → Finance SLM",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+            FinanceCard {
+                Text(
+                    "Accessibility Service",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                Text(
+                    "Finance SLM reads screen content via Android Accessibility Service. Data never leaves your device.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(Spacing.md))
+                Text(
+                    "To enable: Settings → Accessibility → Installed Apps → Finance SLM",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }

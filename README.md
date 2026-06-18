@@ -99,9 +99,12 @@ finance-slm/
 │   │   │   ├── crash_handler.cpp        # Native crash signal handlers
 │   │   │   └── CMakeLists.txt
 │   │   └── kotlin/                      # Android actual implementations
-│   ├── src/iosMain/                     # iOS stubs (future)
+│   ├── src/iosMain/                     # iOS actuals (cinterop llama.cpp, Ktor/okio)
+│   ├── src/nativeInterop/cinterop/      # llama.def (iOS cinterop binding)
 │   └── build.gradle.kts
 │
+├── iosApp/                              # SwiftUI app (XcodeGen project.yml) — build on macOS
+├── scripts/build-llama-ios.sh          # Builds llama.cpp static libs for iOS
 ├── docs/
 │   └── review-and-enhancements.md       # Architecture review & enhancement proposals
 │
@@ -114,23 +117,49 @@ finance-slm/
 
 ### Prerequisites
 
-- Android SDK 34, NDK 26.1
+- Android SDK 34, NDK `26.1.10909125`, CMake `3.22.1`
 - Java 17 (Temurin recommended)
 - Kotlin 2.1+
-- llama.cpp prebuilt `libllama.so` for arm64-v8a (see [Building llama.cpp](#building-llamacpp))
+
+`llama.cpp` is compiled from source automatically by the Gradle build (via the
+shared module's CMake `externalNativeBuild`), so there is **no manual native
+build step** — you only need the submodule checked out and the NDK installed.
 
 ### Build
 
 ```bash
-# Clone with submodules
+# Clone with the llama.cpp submodule
 git clone --recurse-submodules https://github.com/dankphael/finance-slm.git
 cd finance-slm
+# (if you already cloned without --recurse-submodules)
+git submodule update --init --depth 1 llama-cpp
 
-# Build debug APK
+# Build debug APK — this also cross-compiles libllama.so + libllamajni.so
 ./gradlew :androidApp:assembleDebug
 
 # Output: androidApp/build/outputs/apk/debug/androidApp-debug.apk
 ```
+
+The first build is slow (it compiles llama.cpp + ggml for arm64-v8a);
+subsequent builds reuse the cached native output.
+
+### Release builds & signing
+
+Release signing is read from a git-ignored `keystore.properties` at the project
+root. Copy the template and fill in your keystore details:
+
+```bash
+cp keystore.properties.example keystore.properties
+# generate a keystore if you don't have one:
+keytool -genkeypair -v -keystore release.jks -alias finance-slm \
+    -keyalg RSA -keysize 2048 -validity 10000
+
+./gradlew :androidApp:assembleRelease
+```
+
+If `keystore.properties` is absent, release builds fall back to debug signing
+so `assembleRelease` still succeeds (e.g. in CI). Release builds run R8/minify
+with the keep rules in `androidApp/proguard-rules.pro`.
 
 ### Running Tests
 
@@ -173,6 +202,7 @@ Models are defined in `androidApp/src/main/assets/model_catalog.json`. The app d
 - All data stored locally via SQLDelight
 - Export all insights as JSON
 - Delete all data with one tap (Play Store compliance)
+- In-app link to the [privacy policy](PRIVACY.md) from Settings
 - AccessibilityService self-excludes own package
 
 ## Development
@@ -185,10 +215,34 @@ Models are defined in `androidApp/src/main/assets/model_catalog.json`. The app d
 - **SQLDelight** for type-safe SQL with coroutines Flow support
 - **Koin** for dependency injection
 
+### Model integrity (SHA256)
+
+`model_catalog.json` ships with empty `sha256` fields, so download verification
+is skipped. To enforce integrity, populate the hashes:
+
+```bash
+bash scripts/compute-model-checksums.sh   # downloads each model and prints its SHA256
+```
+
+Paste each value into the matching model's `sha256` field; the app then
+verifies every download and rejects corrupted/tampered files.
+
+### iOS
+
+iOS is now a buildable target (build on macOS — see [`iosApp/README.md`](iosApp/README.md)):
+a consumable `Shared` framework, real Kotlin/Native platform implementations
+(Foundation paths, okio filesystem + SHA-256, Ktor/Darwin downloads), llama.cpp
+inference via cinterop, and a SwiftUI app. Screen-reading insights remain
+Android-only (iOS sandboxing has no AccessibilityService equivalent); the iOS
+app uses manual text input instead. The shared module and the SwiftUI app cannot
+be compiled on Linux/CI — they require a Mac + Xcode.
+
 ### Known Issues
 
-- `LoraRepositoryImpl.kt` uses `System.currentTimeMillis()` in commonMain (JVM-only API) — needs `expect/actual` for clock
-- iOS module is stubbed (Android-first development)
+- iOS on-device inference requires building the llama.cpp static libs on a Mac
+  first (`scripts/build-llama-ios.sh`); a few Kotlin↔Swift interop names and
+  llama.cpp C symbols may need minor Xcode-side adjustment (documented in
+  `iosApp/README.md`).
 
 ## License
 

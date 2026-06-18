@@ -2,8 +2,8 @@ package com.habibi.financeslm.android.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -39,13 +39,16 @@ fun AppNavGraph(
 
         composable(Screen.ModelSelection.route) {
             val vm: OnboardingViewModel = koinViewModel()
-            val context = LocalContext.current
+            val catalog by vm.catalog.collectAsStateWithLifecycle()
+            val downloadedModels by vm.downloadedModels.collectAsStateWithLifecycle()
+            val downloadStates by vm.downloadStates.collectAsStateWithLifecycle()
+            val selectedModelId by vm.selectedModelId.collectAsStateWithLifecycle()
 
             ModelSelectionScreen(
-                catalog = vm.catalog.value,
-                downloadedModels = vm.downloadedModels.value,
-                downloadStates = vm.downloadStates.value,
-                selectedModelId = vm.selectedModelId.value,
+                catalog = catalog,
+                downloadedModels = downloadedModels,
+                downloadStates = downloadStates,
+                selectedModelId = selectedModelId,
                 onDownload = { modelId -> vm.downloadModel(modelId) },
                 onSelect = { modelId -> vm.selectModel(modelId) },
                 onContinue = {
@@ -75,57 +78,48 @@ fun AppNavGraph(
                 vm.loadActiveModel()
             }
 
+            val insights by vm.insights.collectAsStateWithLifecycle()
+            val loraAdapters by vm.loraAdapters.collectAsStateWithLifecycle()
+            val activeLora by vm.activeLora.collectAsStateWithLifecycle()
+            val isGenerating by vm.isGenerating.collectAsStateWithLifecycle()
+            val generationOutput by vm.generationOutput.collectAsStateWithLifecycle()
+            val generationError by vm.generationError.collectAsStateWithLifecycle()
+
             HomeScreen(
-                insights = vm.insights.value,
-                loraAdapters = vm.loraAdapters.value,
-                activeLora = vm.activeLora.value,
-                isGenerating = vm.isGenerating.value,
-                generationOutput = vm.generationOutput.value,
-                generationError = vm.generationError.value,
+                insights = insights,
+                loraAdapters = loraAdapters,
+                activeLora = activeLora,
+                isGenerating = isGenerating,
+                generationOutput = generationOutput,
+                generationError = generationError,
                 onGenerateInsight = { vm.generateInsight() },
                 onSetActiveLora = { vm.setActiveLora(it) },
                 onDeleteLora = { vm.deleteLora(it) },
                 onNavigateToModelManagement = { navController.navigate(Screen.ModelManagement.route) },
                 onNavigateToLoraEditor = { loraId -> navController.navigate(Screen.LoraEditor.createRoute(loraId)) },
                 onNavigateToPermissionsManagement = { navController.navigate(Screen.PermissionsManagement.route) },
-                onExportData = {
-                    val path = vm.exportData()
-                    if (path != null) {
-                        android.widget.Toast.makeText(
-                            navController.context,
-                            "Exported to $path",
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
-                    } else {
-                        android.widget.Toast.makeText(
-                            navController.context,
-                            "Export failed",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                },
-                onDeleteAllData = {
-                    vm.deleteAllData()
-                    android.widget.Toast.makeText(
-                        navController.context,
-                        "All data deleted",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                }
+                onExportData = { vm.exportData() },
+                onDeleteAllData = { vm.deleteAllData() }
             )
         }
 
         // ── Settings Screens ──
         composable(Screen.ModelManagement.route) {
             val vm: ModelManagementViewModel = koinViewModel()
+            val catalog by vm.catalog.collectAsStateWithLifecycle()
+            val downloadedModels by vm.downloadedModels.collectAsStateWithLifecycle()
+            val activeModelId by vm.activeModelId.collectAsStateWithLifecycle()
+            val downloadStates by vm.downloadStates.collectAsStateWithLifecycle()
+            val downloadingIds by vm.downloadingIds.collectAsStateWithLifecycle()
+            val confirmDeleteModelId by vm.confirmDeleteModelId.collectAsStateWithLifecycle()
 
             ModelManagementScreen(
-                catalog = vm.catalog.value,
-                downloadedModels = vm.downloadedModels.value,
-                activeModelId = vm.activeModelId.value,
-                downloadStates = vm.downloadStates.value,
-                downloadingIds = vm.downloadingIds.value,
-                confirmDeleteModelId = vm.confirmDeleteModelId.value,
+                catalog = catalog,
+                downloadedModels = downloadedModels,
+                activeModelId = activeModelId,
+                downloadStates = downloadStates,
+                downloadingIds = downloadingIds,
+                confirmDeleteModelId = confirmDeleteModelId,
                 onDownloadModel = { vm.downloadModel(it) },
                 onSetActiveModel = { vm.setActiveModel(it) },
                 onRequestDeleteModel = { vm.requestDeleteModel(it) },

@@ -3,6 +3,8 @@ package com.habibi.financeslm.android.ui.screens.home
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -10,19 +12,28 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.net.Uri
+import com.habibi.financeslm.android.R
+import androidx.compose.ui.text.style.TextOverflow
+import com.habibi.financeslm.android.ui.components.CategoryBadge
+import com.habibi.financeslm.android.ui.components.EmptyState
+import com.habibi.financeslm.android.ui.components.FinanceCard
+import com.habibi.financeslm.android.ui.theme.Spacing
+import com.habibi.financeslm.android.util.formatTimestamp
 import com.habibi.financeslm.domain.model.FinanceInsight
-import com.habibi.financeslm.domain.model.InsightCategory
 import com.habibi.financeslm.domain.model.LoraAdapter
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,32 +50,41 @@ fun HomeScreen(
     onNavigateToModelManagement: () -> Unit,
     onNavigateToLoraEditor: (String) -> Unit,
     onNavigateToPermissionsManagement: () -> Unit,
-    onExportData: () -> Unit = {},
+    onExportData: () -> String? = { null },
     onDeleteAllData: () -> Unit = {}
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    val title = when (selectedTab) {
+        0 -> stringResource(R.string.tab_insights)
+        1 -> stringResource(R.string.tab_lora)
+        else -> stringResource(R.string.tab_settings)
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Finance SLM") })
+            TopAppBar(title = { Text(title) })
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Insights") },
-                    label = { Text("Insights") },
+                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                    label = { Text(stringResource(R.string.tab_insights)) },
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 }
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.AutoAwesome, contentDescription = "LoRA") },
-                    label = { Text("LoRA") },
+                    icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+                    label = { Text(stringResource(R.string.tab_lora)) },
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 }
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                    label = { Text("Settings") },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    label = { Text(stringResource(R.string.tab_settings)) },
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 }
                 )
@@ -93,8 +113,18 @@ fun HomeScreen(
                 modifier = Modifier.padding(padding),
                 onModelManagement = onNavigateToModelManagement,
                 onPermissionsManagement = onNavigateToPermissionsManagement,
-                onExportData = onExportData,
-                onDeleteAllData = onDeleteAllData
+                onExportData = {
+                    val path = onExportData()
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            if (path != null) "Exported insights to $path" else "Export failed"
+                        )
+                    }
+                },
+                onDeleteAllData = {
+                    onDeleteAllData()
+                    scope.launch { snackbarHostState.showSnackbar("All data deleted") }
+                }
             )
         }
     }
@@ -113,66 +143,46 @@ private fun InsightsTab(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         if (insights.isEmpty() && !isGenerating) {
-            // Empty state
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    "No insights yet",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Download a model and start screen reading to generate personalized financial tips.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                FilledTonalButton(onClick = onGenerate, enabled = !isGenerating) {
-                    Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Generate Insight")
-                }
-            }
+            EmptyState(
+                icon = Icons.Default.AutoAwesome,
+                title = stringResource(R.string.insights_empty_title),
+                description = stringResource(R.string.insights_empty_body),
+                actionLabel = stringResource(R.string.generate_insight),
+                onAction = onGenerate
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
-                // Current generation output
-                if (isGenerating || generationOutput.isNotEmpty()) {
+                // Current generation output (live streaming)
+                if (isGenerating) {
                     item {
-                        if (isGenerating) {
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        FinanceCard(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
                                 )
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(16.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Generating insight...", style = MaterialTheme.typography.titleSmall)
-                                    }
-                                    if (generationOutput.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            generationOutput,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                                        )
-                                    }
-                                }
+                                Spacer(modifier = Modifier.width(Spacing.sm))
+                                Text(
+                                    stringResource(R.string.generating_insight),
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                            }
+                            if (generationOutput.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(Spacing.sm))
+                                Text(
+                                    generationOutput,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             }
                         }
                     }
@@ -181,14 +191,13 @@ private fun InsightsTab(
                 // Error state
                 if (generationError != null) {
                     item {
-                        Card(
+                        FinanceCard(
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.errorContainer
                             )
                         ) {
                             Text(
                                 generationError,
-                                modifier = Modifier.padding(16.dp),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
@@ -209,9 +218,9 @@ private fun InsightsTab(
                 onClick = onGenerate,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                    .padding(Spacing.lg)
             ) {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.generate_insight))
             }
         }
     }
@@ -219,78 +228,51 @@ private fun InsightsTab(
 
 @Composable
 private fun InsightCard(insight: FinanceInsight) {
-    val dateFormat = remember { SimpleDateFormat("dd MMM HH:mm", Locale.getDefault()) }
-
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    insight.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                CategoryBadge(insight.category)
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
+    FinanceCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                insight.summary,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
+                insight.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                modifier = Modifier.weight(1f)
             )
+            Spacer(modifier = Modifier.width(Spacing.sm))
+            CategoryBadge(insight.category)
+        }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                if (insight.sourceApp != null) {
-                    Text(
-                        insight.sourceApp ?: "",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+        Spacer(modifier = Modifier.height(Spacing.sm))
+        Text(
+            insight.summary,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(Spacing.sm))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            if (insight.sourceApp != null) {
                 Text(
-                    dateFormat.format(Date(insight.timestamp)),
+                    insight.sourceApp ?: "",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            Text(
+                formatTimestamp(insight.timestamp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-    }
-}
-
-@Composable
-private fun CategoryBadge(category: InsightCategory) {
-    val (label, color) = when (category) {
-        InsightCategory.SPENDING -> "Spending" to MaterialTheme.colorScheme.tertiary
-        InsightCategory.SAVINGS -> "Savings" to MaterialTheme.colorScheme.primary
-        InsightCategory.INVESTMENT -> "Investment" to MaterialTheme.colorScheme.secondary
-        InsightCategory.BUDGET -> "Budget" to MaterialTheme.colorScheme.error
-        InsightCategory.GENERAL -> "General" to MaterialTheme.colorScheme.outline
-    }
-
-    Surface(
-        color = color.copy(alpha = 0.15f),
-        shape = MaterialTheme.shapes.small
-    ) {
-        Text(
-            label,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = color
-        )
     }
 }
 
@@ -308,45 +290,31 @@ private fun LoraTab(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         if (adapters.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    "No LoRA adapters",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Create one to customize your financial advisor persona.\nLoRA adapters are prompt-based — no weight files needed.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            EmptyState(
+                icon = Icons.Default.Tune,
+                title = stringResource(R.string.lora_empty_title),
+                description = stringResource(R.string.lora_empty_body)
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
                 item {
                     Text(
-                        "Background / LoRA Adapters",
+                        stringResource(R.string.lora_section_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
                     Text(
-                        "Customize your financial advisor's persona with prompt-based instructions.",
+                        stringResource(R.string.lora_section_body),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.sm))
                 }
 
                 items(adapters) { adapter ->
@@ -369,9 +337,9 @@ private fun LoraTab(
             onClick = onCreate,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp)
+                .padding(Spacing.lg)
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Create LoRA")
+            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.lora_create))
         }
     }
 }
@@ -384,58 +352,54 @@ private fun LoraCard(
     onDelete: () -> Unit,
     onSetActive: () -> Unit
 ) {
-    Card(
+    FinanceCard(
         colors = if (isActive) CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ) else CardDefaults.cardColors()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    adapter.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                if (isActive) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text("Active") }
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                adapter.instructionText.lines().firstOrNull() ?: adapter.instructionText.take(100),
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                adapter.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilledTonalButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
-                    Text("Edit")
-                }
-                if (!isActive) {
-                    OutlinedButton(onClick = onSetActive, modifier = Modifier.weight(1f)) {
-                        Text("Set Active")
-                    }
-                } else {
-                    OutlinedButton(onClick = onSetActive, modifier = Modifier.weight(1f)) {
-                        Text("Deactivate")
-                    }
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                }
+            if (isActive) {
+                SuggestionChip(
+                    onClick = {},
+                    label = { Text(stringResource(R.string.active)) }
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(Spacing.xs))
+        Text(
+            adapter.instructionText.lines().firstOrNull() ?: adapter.instructionText.take(100),
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(Spacing.sm))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            FilledTonalButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.edit))
+            }
+            OutlinedButton(onClick = onSetActive, modifier = Modifier.weight(1f)) {
+                Text(if (isActive) stringResource(R.string.deactivate) else stringResource(R.string.set_active))
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
@@ -452,71 +416,86 @@ private fun SettingsTab(
     onDeleteAllData: () -> Unit = {}
 ) {
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val privacyUrl = stringResource(R.string.privacy_policy_url)
 
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(Spacing.lg)
+    ) {
         Text(
-            "Settings",
+            stringResource(R.string.tab_settings),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.SemiBold
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Spacing.lg))
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Models", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Download, manage, and switch between language models.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = onModelManagement, modifier = Modifier.fillMaxWidth()) {
-                    Text("Manage Models")
-                }
+        FinanceCard {
+            Text(stringResource(R.string.settings_models), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.settings_models_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(Spacing.md))
+            Button(onClick = onModelManagement, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_manage_models))
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(Spacing.md))
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Accessibility", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Manage screen reader permissions and monitored apps.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = onPermissionsManagement, modifier = Modifier.fillMaxWidth()) {
-                    Text("Manage Permissions")
-                }
+        FinanceCard {
+            Text(stringResource(R.string.settings_accessibility), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.settings_accessibility_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(Spacing.md))
+            Button(onClick = onPermissionsManagement, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_manage_permissions))
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(Spacing.md))
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Data & Privacy", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "All data is stored locally on your device. No data is ever sent to any server.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        FinanceCard {
+            Text(stringResource(R.string.settings_data_privacy), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.settings_data_privacy_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(Spacing.md))
+            OutlinedButton(onClick = onExportData, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_export))
+            }
+            Spacer(modifier = Modifier.height(Spacing.sm))
+            Button(
+                onClick = { showDeleteConfirmation = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(onClick = onExportData, modifier = Modifier.fillMaxWidth()) {
-                    Text("Export My Data")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { showDeleteConfirmation = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Delete All My Data")
-                }
+            ) {
+                Text(stringResource(R.string.settings_delete_all))
+            }
+            Spacer(modifier = Modifier.height(Spacing.sm))
+            TextButton(
+                onClick = {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.settings_privacy_policy))
             }
         }
     }
@@ -524,19 +503,19 @@ private fun SettingsTab(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete All Data?") },
-            text = { Text("This will permanently delete all your insights and screen data. This action cannot be undone.") },
+            title = { Text(stringResource(R.string.delete_all_title)) },
+            text = { Text(stringResource(R.string.delete_all_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     onDeleteAllData()
                     showDeleteConfirmation = false
                 }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )

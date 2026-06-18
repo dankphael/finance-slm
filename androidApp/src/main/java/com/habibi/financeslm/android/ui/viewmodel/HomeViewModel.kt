@@ -127,7 +127,7 @@ class HomeViewModel(
      */
     fun clearInsights() {
         viewModelScope.launch {
-            generateInsightUseCase.getInsights() // triggers clear via the repo
+            inferenceRepository.clearInsights()
         }
     }
 

@@ -16,8 +16,45 @@ kotlin {
         }
     }
 
-    iosArm64()
-    iosSimulatorArm64()
+    // iOS targets are always declared so the source set exists, but the
+    // framework binary + llama.cpp cinterop + native link options are only
+    // configured on a macOS host. Apple targets cannot be built on Linux anyway,
+    // so this keeps the Android/Linux CI pipeline completely unaffected.
+    val iosTargets = listOf(
+        iosArm64(),
+        iosSimulatorArm64()
+    )
+    if (org.jetbrains.kotlin.konan.target.HostManager.hostIsMac) {
+        iosTargets.forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "Shared"
+                isStatic = true
+            }
+
+            iosTarget.compilations.getByName("main").cinterops.create("llama") {
+                defFile(project.file("src/nativeInterop/cinterop/llama.def"))
+                includeDirs(
+                    project.file("llama-cpp/include"),
+                    project.file("llama-cpp/ggml/include")
+                )
+            }
+
+            // Link the per-architecture llama.cpp static libs produced by
+            // scripts/build-llama-ios.sh. (CPU-only first; Metal frameworks are
+            // linked but unused until a Metal build is enabled.)
+            val libSubdir = if (iosTarget.name == "iosArm64") "ios-arm64" else "ios-simulator-arm64"
+            iosTarget.binaries.all {
+                linkerOpts(
+                    "-L${project.projectDir}/build/llama/$libSubdir/lib",
+                    "-lllama", "-lggml", "-lggml-base", "-lggml-cpu",
+                    "-framework", "Foundation",
+                    "-framework", "Accelerate",
+                    "-framework", "Metal",
+                    "-framework", "MetalKit"
+                )
+            }
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -36,6 +73,7 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.coroutines.test)
         }
 
         androidMain.dependencies {

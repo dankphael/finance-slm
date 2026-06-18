@@ -5,6 +5,7 @@ import com.habibi.financeslm.domain.model.LoraAdapter
 import com.habibi.financeslm.domain.repository.LoraRepository
 import com.habibi.financeslm.prompt.SystemPrompts
 import com.habibi.financeslm.util.Logger
+import com.habibi.financeslm.util.currentTimeMillis
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,7 +33,7 @@ class LoraRepositoryImpl(
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val _adapters = MutableStateFlow<List<LoraAdapter>>(emptyList())
     private var nextId = 1
-    private var timeCounter = System.currentTimeMillis()
+    private var timeCounter = currentTimeMillis()
 
     init {
         // Load persisted adapters or seed with default

@@ -1,0 +1,15 @@
+# cinterop definition for llama.cpp (iOS).
+#
+# Only headers are declared here — the Kotlin/Native binding (klib) is generated
+# from these. The actual static libraries (libllama.a / libggml*.a) are linked
+# into the final framework via linkerOpts in shared/build.gradle.kts, using the
+# per-arch outputs of scripts/build-llama-ios.sh.
+#
+# Header search paths come from `includeDirs(...)` in the Gradle cinterop block
+# (llama-cpp/include and llama-cpp/ggml/include).
+
+package = llama.cpp
+language = C
+
+headers = llama.h
+headerFilter = llama.h ggml.h ggml-*.h

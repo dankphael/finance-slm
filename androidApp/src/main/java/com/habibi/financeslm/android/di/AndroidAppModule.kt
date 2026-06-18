@@ -13,6 +13,7 @@ import com.habibi.financeslm.data.repository.ModelRepositoryImpl
 import com.habibi.financeslm.data.repository.PreferencesRepositoryImpl
 import com.habibi.financeslm.data.repository.ScreenDataRepositoryImpl
 import com.habibi.financeslm.data.repository.DownloadEnqueuer
+import com.habibi.financeslm.android.data.repository.WorkManagerDownloadEnqueuer
 
 import com.habibi.financeslm.domain.repository.InferenceRepository
 import com.habibi.financeslm.domain.repository.LoraRepository
@@ -38,8 +39,8 @@ val androidAppModule = module {
     single { ModelDownloadDataSource(get<ChecksumVerifier>(), get<FileSystem>()) }
 
     // ── Download Enqueuer (Android uses WorkManager) ──
-    single<com.habibi.financeslm.data.repository.DownloadEnqueuer> {
-        DownloadEnqueuer(androidContext())
+    single<DownloadEnqueuer> {
+        WorkManagerDownloadEnqueuer(androidContext())
     }
 
     // ── Repository implementations ──
@@ -56,7 +57,6 @@ val androidAppModule = module {
     single<InferenceRepository> {
         InferenceRepositoryImpl(
             llamaEngine = get(),
-            promptBuilder = get(),
             database = get()
         )
     }

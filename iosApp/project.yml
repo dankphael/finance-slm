@@ -1,0 +1,48 @@
+# XcodeGen spec for the Finance SLM iOS app.
+#
+# Usage (macOS):
+#   brew install xcodegen
+#   bash ../scripts/build-llama-ios.sh        # build llama.cpp static libs (once)
+#   cd iosApp && xcodegen generate
+#   open FinanceSLM.xcodeproj
+#
+# The "Build Kotlin Shared framework" pre-build script invokes the standard KMP
+# embedAndSign Gradle task, which produces and code-signs the Shared.framework
+# for the current configuration/SDK and exposes it under
+# shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME).
+name: FinanceSLM
+options:
+  bundleIdPrefix: com.habibi.financeslm
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    ENABLE_BITCODE: NO
+    TARGETED_DEVICE_FAMILY: "1,2"
+
+targets:
+  FinanceSLM:
+    type: application
+    platform: iOS
+    sources:
+      - path: FinanceSLM
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.habibi.financeslm
+        INFOPLIST_FILE: FinanceSLM/Info.plist
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-framework"
+          - "Shared"
+    preBuildScripts:
+      - name: "Build Kotlin Shared framework"
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode
