@@ -1,6 +1,10 @@
 package com.habibi.financeslm.android.service
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -52,6 +56,9 @@ class ModelDownloadWorker(
         const val STATUS_DOWNLOADING = "downloading"
         const val STATUS_DONE = "done"
         const val STATUS_ERROR = "error"
+
+        private const val CHANNEL_ID = "finance_slm_model_download"
+        private const val NOTIFICATION_ID = 1002
     }
 
     override suspend fun doWork(): Result {
@@ -123,11 +130,17 @@ class ModelDownloadWorker(
 
     /**
      * Create foreground service notification for the download.
+     *
+     * Creates the notification channel on first use (API 26+) and declares the
+     * `dataSync` foreground service type required on Android 10+ (and enforced on
+     * Android 14 / targetSdk 34).
      */
     private fun createForegroundInfo(progress: String): ForegroundInfo {
+        ensureNotificationChannel()
+
         val notification = androidx.core.app.NotificationCompat.Builder(
             applicationContext,
-            "finance_slm_model_download"
+            CHANNEL_ID
         )
             .setContentTitle("Downloading Model")
             .setContentText(progress)
@@ -137,6 +150,27 @@ class ModelDownloadWorker(
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
             .build()
 
-        return ForegroundInfo(1002, notification)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun ensureNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = applicationContext.getSystemService(NotificationManager::class.java)
+            if (nm.getNotificationChannel(CHANNEL_ID) == null) {
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    "Model Downloads",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Shows progress while downloading on-device models"
+                    setShowBadge(false)
+                }
+                nm.createNotificationChannel(channel)
+            }
+        }
     }
 }

@@ -56,7 +56,6 @@ val androidAppModule = module {
     single<InferenceRepository> {
         InferenceRepositoryImpl(
             llamaEngine = get(),
-            promptBuilder = get(),
             database = get()
         )
     }

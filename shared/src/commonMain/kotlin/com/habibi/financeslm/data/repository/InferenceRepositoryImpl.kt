@@ -3,14 +3,13 @@ package com.habibi.financeslm.data.repository
 import com.habibi.financeslm.db.FinanceSlmDatabase
 import com.habibi.financeslm.domain.model.FinanceInsight
 import com.habibi.financeslm.domain.model.InsightCategory
-import com.habibi.financeslm.domain.model.ScreenData
 import com.habibi.financeslm.domain.repository.InferenceRepository
 import com.habibi.financeslm.inference.InferenceParams
 import com.habibi.financeslm.inference.LlamaConfig
 import com.habibi.financeslm.inference.LlamaEngine
-import com.habibi.financeslm.prompt.PromptBuilder
 import com.habibi.financeslm.util.Logger
 import com.habibi.financeslm.util.SingleThreadDispatcher
+import com.habibi.financeslm.util.currentTimeMillis
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
@@ -27,7 +26,6 @@ import app.cash.sqldelight.coroutines.mapToList
  */
 class InferenceRepositoryImpl(
     private val llamaEngine: LlamaEngine,
-    private val promptBuilder: PromptBuilder,
     private val database: FinanceSlmDatabase
 ) : InferenceRepository {
 
@@ -115,7 +113,7 @@ class InferenceRepositoryImpl(
                     detailText = resultText,
                     category = categorizeResult(resultText),
                     sourceApp = null,
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = currentTimeMillis(),
                     loraAdapterId = null
                 )
                 database.financeInsightQueries.insertOrReplace(
@@ -145,15 +143,6 @@ class InferenceRepositoryImpl(
                 close()
             }
         }
-    }
-
-    override suspend fun generateInsight(screenData: ScreenData, loraInstruction: String?): Flow<String> {
-        val prompt = if (loraInstruction != null) {
-            promptBuilder.build(screenData, loraInstruction)
-        } else {
-            promptBuilder.build(screenData)
-        }
-        return generate(prompt, "", loraPath = if (loraInstruction != null) "lora" else null)
     }
 
     override fun getInsights(): Flow<List<FinanceInsight>> {

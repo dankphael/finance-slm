@@ -2,14 +2,20 @@
 #
 # build-llama-android.sh — Cross-compile llama.cpp for Android arm64-v8a
 #
+# NOTE: This script is OPTIONAL. The normal Gradle build compiles llama.cpp
+# from source automatically via the shared module's externalNativeBuild
+# (see shared/src/androidMain/cpp/CMakeLists.txt). Use this script only if you
+# want to produce standalone .so files outside of Gradle.
+#
 # Prerequisites:
-#   - ANDROID_HOME=/home/raphael-lee/Android/Sdk
+#   - ANDROID_HOME pointing at your Android SDK (or set ANDROID_NDK directly)
 #   - Android NDK 26.1.10909125 installed
 #   - cmake 3.22+ installed
+#   - llama-cpp submodule checked out: git submodule update --init --depth 1 llama-cpp
 #
 # This script:
 #   1. Configures llama.cpp with the Android NDK toolchain (arm64-v8a, API 26)
-#   2. Builds libllama.so (and optionally libllama-common.so)
+#   2. Builds libllama.so (and the ggml shared libs)
 #   3. Copies the resulting .so files to shared/src/androidMain/jniLibs/arm64-v8a/
 #
 # Usage:
@@ -22,8 +28,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # ── Config ────────────────────────────────────────────────────────────────
-ANDROID_HOME="${ANDROID_HOME:-/home/raphael-lee/Android/Sdk}"
-ANDROID_NDK="${ANDROID_NDK:-$ANDROID_HOME/ndk/26.1.10909125}"
+ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+ANDROID_NDK="${ANDROID_NDK:-${ANDROID_NDK_HOME:-$ANDROID_HOME/ndk/26.1.10909125}}"
 ABI="arm64-v8a"
 ANDROID_PLATFORM="android-26"
 CMAKE_TOOLCHAIN="$ANDROID_NDK/build/cmake/android.toolchain.cmake"
@@ -115,20 +121,10 @@ if [ -z "$FOUND_SO" ]; then
 fi
 
 if [ -z "$FOUND_SO" ]; then
-    echo "WARNING: libllama.so not found after build."
+    echo "ERROR: libllama.so not found after build."
     echo "  Searched in $BUILD_DIR"
-    echo "  Build may have placed it in an unexpected location."
-    echo "  Check: find $BUILD_DIR -name '*.so' -type f"
-    echo ""
-    echo "==> Creating jniLibs directory with stub placeholders..."
-    mkdir -p "$OUTPUT_JNILIBS"
-    # Create stub .so files so the Gradle build can still link
-    # A real build would copy the actual .so files here
-    echo "This is a placeholder. Replace with real libllama.so from a successful build." > "$OUTPUT_JNILIBS/libllama.so.stub.txt"
-    echo ""
-    echo "NOTE: Stub created. To perform a real build, ensure all NDK components"
-    echo "      are installed and try again. The build script flags are correct."
-    exit 0
+    echo "  Inspect with: find $BUILD_DIR -name '*.so' -type f"
+    exit 1
 fi
 
 # ── Step 4: Copy to jniLibs ──────────────────────────────────────────────

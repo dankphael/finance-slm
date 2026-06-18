@@ -33,8 +33,6 @@ private class FakeInferenceRepository(
         return generateResult
     }
 
-    override suspend fun generateInsight(screenData: ScreenData, loraInstruction: String?): Flow<String> =
-        flow { emit("") }
     override fun getInsights(): Flow<List<FinanceInsight>> = insightsResult
     override suspend fun clearInsights() {}
     override suspend fun loadModel(modelPath: String): Boolean = true
