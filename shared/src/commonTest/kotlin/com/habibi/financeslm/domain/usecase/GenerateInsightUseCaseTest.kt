@@ -120,9 +120,9 @@ class GenerateInsightUseCaseTest {
         assertEquals("insight text", result)
         assertEquals(1, inferenceRepo.generateCallCount)
         assertEquals("/models/test.gguf", inferenceRepo.lastModelPath)
-        requireNotNull(inferenceRepo.lastPrompt)
+        val prompt = requireNotNull(inferenceRepo.lastPrompt)
         // prompt contains screen data
-        kotlin.test.assertContains(inferenceRepo.lastPrompt, "Bill SGD 150")
+        kotlin.test.assertContains(prompt, "Bill SGD 150")
     }
 
     @Test
@@ -143,10 +143,10 @@ class GenerateInsightUseCaseTest {
         assertEquals(1, inferenceRepo.generateCallCount)
         // The selected model's downloaded path is used
         assertEquals("/data/models/finance-llama.gguf", inferenceRepo.lastModelPath)
-        requireNotNull(inferenceRepo.lastPrompt)
+        val prompt = requireNotNull(inferenceRepo.lastPrompt)
         // screen data repo's recent data is included
-        kotlin.test.assertContains(inferenceRepo.lastPrompt, "OCBC Digital")
-        kotlin.test.assertContains(inferenceRepo.lastPrompt, "Account balance SGD 12,000.00")
+        kotlin.test.assertContains(prompt, "OCBC Digital")
+        kotlin.test.assertContains(prompt, "Account balance SGD 12,000.00")
     }
 
     @Test
@@ -191,8 +191,8 @@ class GenerateInsightUseCaseTest {
 
         useCase.generateFromLatestScreen(loraInstruction = "Focus on savings").first()
 
-        requireNotNull(inferenceRepo.lastPrompt)
-        kotlin.test.assertContains(inferenceRepo.lastPrompt, "Additional instruction: Focus on savings")
+        val prompt = requireNotNull(inferenceRepo.lastPrompt)
+        kotlin.test.assertContains(prompt, "Additional instruction: Focus on savings")
     }
 
     @Test
@@ -241,8 +241,8 @@ class GenerateInsightUseCaseTest {
         useCase.generate(screenData, "/custom/path.gguf", "mistral").first()
 
         assertEquals("/custom/path.gguf", inferenceRepo.lastModelPath)
-        requireNotNull(inferenceRepo.lastPrompt)
-        kotlin.test.assertContains(inferenceRepo.lastPrompt, "Grab")
-        kotlin.test.assertContains(inferenceRepo.lastPrompt, "[INST]")
+        val prompt = requireNotNull(inferenceRepo.lastPrompt)
+        kotlin.test.assertContains(prompt, "Grab")
+        kotlin.test.assertContains(prompt, "[INST]")
     }
 }
