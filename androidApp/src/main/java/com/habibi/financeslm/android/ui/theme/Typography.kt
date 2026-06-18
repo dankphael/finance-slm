@@ -1,6 +1,7 @@
 package com.habibi.financeslm.android.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
@@ -14,6 +15,7 @@ import com.habibi.financeslm.android.R
  * SIL OFL — see assets/inter_font_license.txt); per-weight instances are derived
  * via [FontVariation] (supported on minSdk 26+).
  */
+@OptIn(ExperimentalTextApi::class)
 private fun interFont(weight: FontWeight) = Font(
     R.font.inter,
     weight = weight,
