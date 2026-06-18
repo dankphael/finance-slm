@@ -11,10 +11,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import com.habibi.financeslm.android.R
+import com.habibi.financeslm.android.ui.components.OnboardingProgress
+import com.habibi.financeslm.android.ui.theme.Spacing
 import com.habibi.financeslm.platform.AndroidScreenReader
 
 /**
@@ -42,8 +46,6 @@ private val FINANCE_APPS = listOf(
 fun PermissionsScreen(
     onContinue: () -> Unit
 ) {
-    val context = LocalContext.current
-
     // Track toggled packages — all enabled by default
     val selectedPackages = remember { mutableStateMapOf(*FINANCE_APPS.map { it.packageName to true }.toTypedArray()) }
 
@@ -63,43 +65,39 @@ fun PermissionsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Permissions & Finance Apps") })
+            TopAppBar(title = { Text(stringResource(R.string.permissions_title)) })
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = Spacing.xl),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Scrollable content area
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
 
                 Text(
-                    text = "Select Finance Apps to Monitor",
+                    text = stringResource(R.string.permissions_apps_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(Spacing.xs))
                 Text(
-                    text = "Toggle which apps Finance SLM should read screen data from. Data never leaves your device.",
+                    text = stringResource(R.string.permissions_apps_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.lg))
 
                 // App toggle list
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    LazyColumn(modifier = Modifier.padding(vertical = Spacing.xs)) {
                         items(FINANCE_APPS) { app ->
                             SwitchListItem(
                                 app = app,
@@ -112,22 +110,22 @@ fun PermissionsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(Spacing.xl))
 
                 // Accessibility Service section
                 Text(
-                    text = "Accessibility Service",
+                    text = stringResource(R.string.permissions_service_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(Spacing.xs))
                 Text(
-                    text = "Screen reading requires the Accessibility Service to be enabled in your system settings.",
+                    text = stringResource(R.string.permissions_service_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
 
                 // Service status indicator
                 if (serviceCheckAttempted) {
@@ -142,15 +140,15 @@ fun PermissionsScreen(
                     ) {
                         Text(
                             text = if (serviceEnabled)
-                                "✓ Accessibility Service is enabled"
+                                stringResource(R.string.permissions_service_enabled)
                             else
-                                "✗ Accessibility Service is not enabled",
-                            modifier = Modifier.padding(16.dp),
+                                stringResource(R.string.permissions_service_disabled),
+                            modifier = Modifier.padding(Spacing.lg),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(Spacing.md))
                 }
 
                 // Open system settings button
@@ -161,13 +159,13 @@ fun PermissionsScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Open Accessibility Settings")
+                    Text(stringResource(R.string.permissions_open_settings))
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
 
                 Text(
-                    text = "After enabling, find \"Finance SLM\" in the list of installed apps and turn it on.",
+                    text = stringResource(R.string.permissions_after_enabling),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Start
@@ -175,7 +173,7 @@ fun PermissionsScreen(
 
                 // Skip reminder
                 if (showSkipReminder) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(Spacing.md))
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -183,8 +181,8 @@ fun PermissionsScreen(
                         )
                     ) {
                         Text(
-                            text = "You can enable the Accessibility Service later from Settings. Screen reading won't work until then.",
-                            modifier = Modifier.padding(16.dp),
+                            text = stringResource(R.string.permissions_skip_reminder),
+                            modifier = Modifier.padding(Spacing.lg),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -195,9 +193,12 @@ fun PermissionsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(vertical = Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                OnboardingProgress(step = 3, total = 3)
+                Spacer(modifier = Modifier.height(Spacing.xs))
                 Button(
                     onClick = {
                         // Check if service is enabled before continuing
@@ -213,7 +214,7 @@ fun PermissionsScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Continue — Ready!")
+                    Text(stringResource(R.string.permissions_continue))
                 }
 
                 TextButton(
@@ -223,7 +224,7 @@ fun PermissionsScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Skip for now")
+                    Text(stringResource(R.string.permissions_skip))
                 }
             }
         }
@@ -236,10 +237,11 @@ private fun SwitchListItem(
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val toggleDescription = stringResource(R.string.toggle_monitor_app, app.displayName)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -257,9 +259,10 @@ private fun SwitchListItem(
         }
         Switch(
             checked = isChecked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier.semantics { contentDescription = toggleDescription }
         )
     }
 
-    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+    HorizontalDivider(modifier = Modifier.padding(horizontal = Spacing.lg))
 }

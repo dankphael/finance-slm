@@ -99,6 +99,9 @@ dependencies {
     // WorkManager for background model downloads
     implementation(libs.work.runtime.ktx)
 
+    // Android 12+ splash screen (with compat back to API 26)
+    implementation(libs.core.splashscreen)
+
     // Debug
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.tooling.preview)

@@ -6,4 +6,93 @@
     <string name="notification_title">Finance SLM Active</string>
     <string name="notification_text">Monitoring finance apps for insights</string>
     <string name="privacy_policy_url">https://github.com/dankphael/finance-slm/blob/main/PRIVACY.md</string>
+
+    <!-- Common -->
+    <string name="active">Active</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="set_active">Set Active</string>
+    <string name="deactivate">Deactivate</string>
+    <string name="back">Back</string>
+    <string name="retry">Retry</string>
+
+    <!-- Bottom navigation tabs -->
+    <string name="tab_insights">Insights</string>
+    <string name="tab_lora">LoRA</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Insights tab -->
+    <string name="insights_empty_title">No insights yet</string>
+    <string name="insights_empty_body">Download a model and start screen reading to generate personalized financial tips.</string>
+    <string name="generate_insight">Generate Insight</string>
+    <string name="generating_insight">Generating insight…</string>
+
+    <!-- LoRA tab -->
+    <string name="lora_empty_title">No LoRA adapters</string>
+    <string name="lora_empty_body">Create one to customize your financial advisor persona. LoRA adapters are prompt-based — no weight files needed.</string>
+    <string name="lora_section_title">Background / LoRA Adapters</string>
+    <string name="lora_section_body">Customize your financial advisor\'s persona with prompt-based instructions.</string>
+    <string name="lora_create">Create LoRA</string>
+
+    <!-- Settings tab -->
+    <string name="settings_models">Models</string>
+    <string name="settings_models_body">Download, manage, and switch between language models.</string>
+    <string name="settings_manage_models">Manage Models</string>
+    <string name="settings_accessibility">Accessibility</string>
+    <string name="settings_accessibility_body">Manage screen reader permissions and monitored apps.</string>
+    <string name="settings_manage_permissions">Manage Permissions</string>
+    <string name="settings_data_privacy">Data &amp; Privacy</string>
+    <string name="settings_data_privacy_body">All data is stored locally on your device. No data is ever sent to any server.</string>
+    <string name="settings_export">Export My Data</string>
+    <string name="settings_delete_all">Delete All My Data</string>
+    <string name="settings_privacy_policy">View Privacy Policy</string>
+    <string name="delete_all_title">Delete All Data?</string>
+    <string name="delete_all_body">This will permanently delete all your insights and screen data. This action cannot be undone.</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to Finance SLM</string>
+    <string name="onboarding_welcome_body">Your personal on-device AI financial advisor. No cloud, no accounts — just private insights.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_feature_private_title">100% private</string>
+    <string name="onboarding_feature_private_body">Everything runs on your device. Your data never leaves your phone.</string>
+    <string name="onboarding_feature_offline_title">Works offline</string>
+    <string name="onboarding_feature_offline_body">A local language model powers your insights — no internet required.</string>
+    <string name="onboarding_feature_insights_title">Personalized insights</string>
+    <string name="onboarding_feature_insights_body">Understand your spending, savings, and investments at a glance.</string>
+
+    <!-- Model selection / management -->
+    <string name="model_select_title">Select Model</string>
+    <string name="model_select_header">Download a Language Model</string>
+    <string name="model_select_body">Choose a model to power your financial insights. All models run entirely on your device.</string>
+    <string name="model_continue">Continue</string>
+    <string name="model_download_to_continue">Download a model to continue</string>
+    <string name="recommended">Recommended</string>
+    <string name="ready">Ready</string>
+    <string name="use_this_model">Use this model</string>
+    <string name="retry_download">Retry Download</string>
+    <string name="model_loading">Fetching the model catalog…</string>
+    <string name="model_management_title">Model Management</string>
+    <string name="downloaded_models">Downloaded Models</string>
+    <string name="no_models_downloaded">No models downloaded yet.</string>
+    <string name="available_models">Available Models</string>
+    <string name="available_models_body">Models not yet downloaded — tap to download.</string>
+    <string name="all_models_downloaded">All catalog models are downloaded.</string>
+    <string name="set_as_active">Set as Active</string>
+    <string name="delete_model_title">Delete Model</string>
+
+    <!-- Permissions -->
+    <string name="permissions_title">Permissions &amp; Finance Apps</string>
+    <string name="permissions_apps_title">Select Finance Apps to Monitor</string>
+    <string name="permissions_apps_body">Toggle which apps Finance SLM should read screen data from. Data never leaves your device.</string>
+    <string name="permissions_service_title">Accessibility Service</string>
+    <string name="permissions_service_body">Screen reading requires the Accessibility Service to be enabled in your system settings.</string>
+    <string name="permissions_service_enabled">✓ Accessibility Service is enabled</string>
+    <string name="permissions_service_disabled">✗ Accessibility Service is not enabled</string>
+    <string name="permissions_open_settings">Open Accessibility Settings</string>
+    <string name="permissions_after_enabling">After enabling, find \"Finance SLM\" in the list of installed apps and turn it on.</string>
+    <string name="permissions_skip_reminder">You can enable the Accessibility Service later from Settings. Screen reading won\'t work until then.</string>
+    <string name="permissions_continue">Continue — Ready!</string>
+    <string name="permissions_skip">Skip for now</string>
+    <string name="toggle_monitor_app">Toggle monitoring for %1$s</string>
 </resources>

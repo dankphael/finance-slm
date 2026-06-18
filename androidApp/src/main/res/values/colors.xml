@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#0B6E4F</color>
+    <!-- Pre-Compose window background; matches the light theme surface. -->
+    <color name="window_background">#F5FBF5</color>
 </resources>
