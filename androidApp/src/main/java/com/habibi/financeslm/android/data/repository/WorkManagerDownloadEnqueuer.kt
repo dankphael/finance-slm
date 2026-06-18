@@ -1,4 +1,4 @@
-package com.habibi.financeslm.data.repository
+package com.habibi.financeslm.android.data.repository
 
 import android.content.Context
 import androidx.work.Data
@@ -6,6 +6,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import com.habibi.financeslm.android.service.ModelDownloadWorker
+import com.habibi.financeslm.data.repository.DownloadEnqueuer
 import com.habibi.financeslm.domain.model.DownloadState
 import com.habibi.financeslm.util.Logger
 import kotlinx.coroutines.flow.Flow
@@ -13,15 +14,15 @@ import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 /**
- * Android DownloadEnqueuer — uses WorkManager to download model files in a
+ * Android [DownloadEnqueuer] — uses WorkManager to download model files in a
  * foreground service, ensuring downloads survive app backgrounding.
  *
- * This class lives in the androidApp module to access androidx.work classes
- * which are not available in the shared module.
+ * This implementation lives in the androidApp module to access androidx.work
+ * classes which are not available in the shared module.
  */
-class DownloadEnqueuer(
+class WorkManagerDownloadEnqueuer(
     private val context: Context
-) {
+) : DownloadEnqueuer {
     private val workManager = WorkManager.getInstance(context)
 
     // Track active download work IDs by model ID
@@ -31,7 +32,7 @@ class DownloadEnqueuer(
      * Enqueue a model download via WorkManager and return a Flow of download states.
      * The worker runs as a foreground service so it survives app backgrounding.
      */
-    fun enqueueDownload(
+    override fun enqueueDownload(
         url: String,
         destinationPath: String,
         expectedSha256: String,
@@ -91,7 +92,7 @@ class DownloadEnqueuer(
     /**
      * Cancel a download by model ID.
      */
-    suspend fun cancelDownload(modelId: String) {
+    override suspend fun cancelDownload(modelId: String) {
         val workId = activeWorkIds.remove(modelId)
         if (workId != null) {
             workManager.cancelWorkById(workId)
